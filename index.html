@@ -2,22 +2,11 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🎂 HAPPY 42nd BIRTHDAY!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SKY BURST · 42</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-
-    <!-- ▼▼▼ Google Analytics 4 ▼▼▼ -->
-    <!-- G-XXXXXXXXXX をあなたの測定IDに変えてください -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-XXXXXXXXXX');
-    </script>
-    <!-- ▲▲▲ Google Analytics 4 ▲▲▲ -->
-
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -25,54 +14,62 @@
 <script src="./config.js"></script>
 <script>
 // ==========================================================
-//  🎂 HAPPY 42nd BIRTHDAY BALLOON GAME
-//  カスタマイズしたい箇所は ★CUSTOM★ で検索してください
+//  SKY BURST · 42 — Redesigned
+//  Dark-neon UI shell. Game logic preserved; visuals reskinned.
 // ==========================================================
 
-// CONFIG は config.js で定義されています
-// 後方互換のため CUSTOM / STAGES / DEFS / STAGE_UP_MSG は CONFIG から生成
 const CUSTOM = {
     ...CONFIG.assets,
     name:     CONFIG.ending.message,
     subtitle: CONFIG.ending.subtitle,
     theme:    CONFIG.theme,
 };
-
 const STAGES       = CONFIG.stages;
 const STAGE_UP_MSG = CONFIG.stageUpMessages;
 
-// アイテム定義を CONFIG から生成
+// ── Design tokens (UI shell — game items keep their original colors) ─────
+const UI = {
+    bg0:      '#050714',
+    bg1:      '#0a0e1f',
+    accent:   '#6df0ff',
+    accent2:  '#ff7a8a',   // warn / target lock
+    ink0:     '#f4f6ff',
+    ink1:     '#c8cce8',
+    ink2:     '#7a80a8',
+    ink3:     '#3f4570',
+    line:     'rgba(255,255,255,0.10)',
+    line2:    'rgba(255,255,255,0.18)',
+    fontDisp: '"Space Grotesk", system-ui, sans-serif',
+    fontMono: '"JetBrains Mono", ui-monospace, monospace',
+    fontJa:   '"Noto Sans JP", system-ui, sans-serif',
+};
+
+// Item defs from CONFIG
 const DEFS = {};
 Object.entries(CONFIG.items).forEach(([k, d]) => {
     DEFS[k] = {
-        label:   d.label,
-        pts:     d.pts,
-        w:       d.w,
-        color:   d.color,
-        bg:      d.bg,
-        hazard:  d.hazard  ?? false,
-        special: d.special ?? false,
-        slow:    d.slow    ?? false,
+        label: d.label, pts: d.pts, w: d.w, color: d.color, bg: d.bg,
+        hazard: d.hazard ?? false, special: d.special ?? false, slow: d.slow ?? false,
     };
 });
 
-const R        = 36;    // バルーン半径（px）
-const COMBO_MS = 1500;  // コンボリセットまでの時間（ms）
+const R        = 36;
+const COMBO_MS = 1500;
 
-// ── タイミング定数（フレーム数、約 60fps）──────────────────────
-const LOADING_FRAMES        = 100;  // ローディング表示
-const INTRO_FADE_FRAMES     = 30;  // 動画→暗転フェード
-const INTRO_BALLOON_FRAMES  = 210; // バルーンアニメ総フレーム
-const INTRO_BALLOON_FADEIN  = 40;  // バルーンアニメ フェードイン
-const INTRO_BALLOON_FADEOUT = 20;  // バルーンアニメ フェードアウト
-const TITLE_FADE_FRAMES     = 40;  // タイトル画面フェードイン
-const STAGE_FLASH_FRAMES    = 160; // ステージアップ吹き出し表示
-const STAGE_FLASH_SLIDE     = 22;  // 吹き出しスライドイン/アウト
-const START_WAIT_FRAMES     = 60;  // START後・吹き出しまでの待機（約1s）
-const START_SLIDE_FRAMES    = 15;  // 吹き出しスライドイン
-const START_TOTAL_FRAMES    = 210; // START後・ゲーム開始まで（約3.5s）
-const SLOW_FRAMES           = 210; // SLOW効果の持続時間（約3.5s）
-const RETICLE_SIZE          = 72;  // レティクル表示サイズ（px、アス比 1:1 維持）
+// timing
+const LOADING_FRAMES        = 100;
+const INTRO_FADE_FRAMES     = 30;
+const INTRO_BALLOON_FRAMES  = 210;
+const INTRO_BALLOON_FADEIN  = 40;
+const INTRO_BALLOON_FADEOUT = 20;
+const TITLE_FADE_FRAMES     = 40;
+const STAGE_FLASH_FRAMES    = 160;
+const STAGE_FLASH_SLIDE     = 22;
+const START_WAIT_FRAMES     = 60;
+const START_SLIDE_FRAMES    = 15;
+const START_TOTAL_FRAMES    = 210;
+const SLOW_FRAMES           = 210;
+const RETICLE_SIZE          = 80;
 
 // ── Canvas setup ──────────────────────────────────────────
 const canvas = document.getElementById('c');
@@ -80,8 +77,8 @@ const ctx    = canvas.getContext('2d');
 let W, H;
 function resize() {
     const aspect = 9 / 16;
-    H = Math.min(window.innerHeight, 820);
-    W = Math.min(window.innerWidth, H * aspect, 420);
+    H = Math.min(window.innerHeight, 1100);
+    W = Math.min(window.innerWidth, H * aspect, 560);
     H = Math.min(H, W / aspect);
     canvas.width  = Math.floor(W);
     canvas.height = Math.floor(H);
@@ -91,89 +88,81 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-// ── 画像・動画の読み込み ────────────────────────────────
-let fanArtImg  = null;
-let bouncerImgs = [];
-
-function loadImg(src) {
-    const img = new Image();
-    img.src = src;
-    return img;
-}
-if (CUSTOM.fanArtSrc)  fanArtImg  = loadImg(CUSTOM.fanArtSrc);
-
-// bouncerSrc は文字列でも配列でもOK
+// ── Asset loading ─────────────────────────────────────────
+function loadImg(src) { const img = new Image(); img.src = src; return img; }
+let fanArtImg = CUSTOM.fanArtSrc ? loadImg(CUSTOM.fanArtSrc) : null;
 const bouncerSrcs = CUSTOM.bouncerSrc
-    ? (Array.isArray(CUSTOM.bouncerSrc) ? CUSTOM.bouncerSrc : [CUSTOM.bouncerSrc])
-    : [];
-bouncerImgs = bouncerSrcs.map(s => loadImg(s));
-
+    ? (Array.isArray(CUSTOM.bouncerSrc) ? CUSTOM.bouncerSrc : [CUSTOM.bouncerSrc]) : [];
+const bouncerImgs = bouncerSrcs.map(s => loadImg(s));
 let titleImg        = CUSTOM.titleImgSrc        ? loadImg(CUSTOM.titleImgSrc)        : null;
 let titleImgCleared = CUSTOM.titleImgClearedSrc ? loadImg(CUSTOM.titleImgClearedSrc) : null;
 let reticleImg      = CUSTOM.reticleSrc         ? loadImg(CUSTOM.reticleSrc)         : null;
 
-// クリア状態（タブを閉じるまで保持）
 const CLEARED_KEY = 'sky-burst-42-cleared';
 let gameCleared = sessionStorage.getItem(CLEARED_KEY) === '1';
 function setCleared() { gameCleared = true;  sessionStorage.setItem(CLEARED_KEY, '1'); }
 function resetCleared() { gameCleared = false; sessionStorage.removeItem(CLEARED_KEY); }
 
-// イントロ MP4 ビデオ要素（Canvas の後ろに隠す）
 let introVideo = null;
 let introVideoEnded = false;
 if (CUSTOM.introVideoSrc) {
     introVideo = document.createElement('video');
-    introVideo.src          = CUSTOM.introVideoSrc;
-    introVideo.muted        = true;   // autoplay には muted 必須
-    introVideo.playsInline  = true;
-    introVideo.preload      = 'auto';
+    introVideo.src = CUSTOM.introVideoSrc;
+    introVideo.muted = true;
+    introVideo.playsInline = true;
+    introVideo.preload = 'auto';
     introVideo.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:1px;height:1px';
     document.body.appendChild(introVideo);
     introVideo.addEventListener('ended', () => { introVideoEnded = true; });
+    introVideo.addEventListener('error', () => { introVideoEnded = true; });
+}
+
+// reticle tint cache
+let _retCache = null;
+function tintedReticle(color) {
+    if (!reticleImg || !reticleImg.complete || reticleImg.naturalWidth === 0) return null;
+    if (_retCache && _retCache.color === color) return _retCache.canvas;
+    const off = document.createElement('canvas');
+    off.width = reticleImg.naturalWidth; off.height = reticleImg.naturalHeight;
+    const o = off.getContext('2d');
+    o.drawImage(reticleImg, 0, 0);
+    o.globalCompositeOperation = 'source-in';
+    o.fillStyle = color;
+    o.fillRect(0, 0, off.width, off.height);
+    _retCache = { color, canvas: off };
+    return off;
 }
 
 // ── State ─────────────────────────────────────────────────
 let G;
 function initState() {
     G = {
-        phase:     'loading',
-        frame:     0,
-        introSub:  'video',  // 'video' | 'fade' | 'balloons'
-        introFade: 0,        // フェードオーバーレイ進捗フレーム
-        score:     0,
-        combo:     1,
-        lives:     3,
-        si:        0,
-        stagePts:  0,
-        items:     [],
-        particles: [],
-        confetti:  [],
-        lastPop:   0,
-        pool:      buildPool(0),
-        stars:     buildStars(),
-        bgT:       1,
-        bgFrom:    { bg1: STAGES[0].bg1, bg2: STAGES[0].bg2 },
-        stageFlash: 0,
-        stageFlashMsg: 0,
-        introAlpha: 0,
-        titleFade:  0,
-        slowTimer:  0,   // clock割り後のスロー残りフレーム
+        phase: 'loading', frame: 0,
+        introSub: 'video', introFade: 0,
+        score: 0, combo: 1, lives: 3,
+        si: 0, stagePts: 0,
+        items: [], particles: [], confetti: [],
+        lastPop: 0,
+        pool: buildPool(0),
+        stars: buildStars(),
+        bgT: 1,
+        bgFrom: { bg1: STAGES[0].bg1, bg2: STAGES[0].bg2 },
+        stageFlash: 0, stageFlashMsg: 0,
+        introAlpha: 0, titleFade: 0,
+        slowTimer: 0,
         bouncers: [
-            { x: 0, y: 0, vx:  1.5, vy: -1.8, size: 72 },
-            { x: 0, y: 0, vx: -1.2, vy: -1.6, size: 72 },
+            { x: 0, y: 0, vx:  1.5, vy: -1.8, size: 86 },
+            { x: 0, y: 0, vx: -1.2, vy: -1.6, size: 86 },
         ],
     };
 }
-
 function buildStars() {
-    return Array.from({length:40}, () => ({
-        x: Math.random(),
-        y: Math.random() * 0.82,
-        r: 0.5 + Math.random() * 1.2,
+    return Array.from({length: 56}, () => ({
+        x: Math.random(), y: Math.random() * 0.85,
+        r: 0.4 + Math.random() * 1.4,
         ph: Math.random() * Math.PI * 2,
     }));
 }
-
 function buildPool(si) {
     const bw = STAGES[si].bombW;
     const pool = [];
@@ -184,7 +173,7 @@ function buildPool(si) {
     return pool;
 }
 
-// ── Spawn ──────────────────────────────────────────────────
+// ── Spawn ─────────────────────────────────────────────────
 function spawnItem() {
     const type = G.pool[Math.floor(Math.random() * G.pool.length)];
     const def  = DEFS[type];
@@ -192,20 +181,20 @@ function spawnItem() {
     const spd  = (STAGES[G.si].speed + Math.random() * 0.8) * sf;
     G.items.push({
         type, def,
-        x:      R + Math.random() * (W - R * 2),
-        y:      H + R + 12,
-        vy:     -spd,
-        vx:     (Math.random() - 0.5) * 0.4,
+        x: R + Math.random() * (W - R*2),
+        y: H + R + 12,
+        vy: -spd,
+        vx: (Math.random() - 0.5) * 0.4,
         wobble: Math.random() * Math.PI * 2,
         popped: false,
     });
 }
 
 // ── Particles ─────────────────────────────────────────────
-function burst(x, y, color, n = 12) {
-    for (let i = 0; i < n; i++) {
-        const a = (Math.PI * 2 / n) * i + Math.random() * 0.5;
-        const s = 2 + Math.random() * 5;
+function burst(x, y, color, n=12) {
+    for (let i=0; i<n; i++) {
+        const a = (Math.PI*2/n)*i + Math.random()*0.5;
+        const s = 2 + Math.random()*5;
         G.particles.push({ type:'dot', x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, r:3+Math.random()*4, color, life:1 });
     }
 }
@@ -213,39 +202,33 @@ function floatText(x, y, text, color) {
     G.particles.push({ type:'text', x, y, vy:-1.6, vx:0, text, color, life:1 });
 }
 function spawnConfetti() {
-    const cols = [CUSTOM.theme.pink, CUSTOM.theme.gold, CUSTOM.theme.purple, CUSTOM.theme.teal, '#F87171', '#60A5FA'];
-    G.confetti = Array.from({length:180}, () => ({
-        x:    Math.random() * W,
-        y:   -20 - Math.random() * H,
-        vy:   1.2 + Math.random() * 2,
-        vx:   (Math.random() - 0.5) * 1.5,
-        color: cols[Math.floor(Math.random() * cols.length)],
-        w:    6 + Math.random() * 8,
-        h:    3 + Math.random() * 5,
-        rot:  Math.random() * Math.PI,
-        rotV: (Math.random() - 0.5) * 0.18,
+    const cols = ['#6df0ff', '#ff7a8a', '#FFD700', '#A78BFA', '#6EE7B7', '#ffffff'];
+    G.confetti = Array.from({length: 200}, () => ({
+        x: Math.random()*W, y: -20 - Math.random()*H,
+        vy: 1.2 + Math.random()*2, vx: (Math.random()-0.5)*1.5,
+        color: cols[Math.floor(Math.random()*cols.length)],
+        w: 6 + Math.random()*8, h: 3 + Math.random()*5,
+        rot: Math.random()*Math.PI, rotV: (Math.random()-0.5)*0.18,
     }));
 }
 
-// ── Pop logic ──────────────────────────────────────────────
+// ── Pop ───────────────────────────────────────────────────
 function tryPop(px, py) {
     if (G.phase !== 'playing') return;
-    for (let i = G.items.length - 1; i >= 0; i--) {
+    for (let i=G.items.length-1; i>=0; i--) {
         const it = G.items[i];
         if (it.popped) continue;
         const dx = px - it.x, dy = py - it.y;
         if (dx*dx + dy*dy < R*R*1.8) { it.popped = true; onPop(it); return; }
     }
 }
-
 function onPop(it) {
     const now = Date.now();
     if (it.def.hazard) {
         G.combo = 1;
         G.lives = Math.max(0, G.lives - 1);
-        burst(it.x, it.y, '#FF4444', 10);
-        floatText(it.x, it.y - 20, '💥 MISS!', '#FF4444');
-        gaEvent('pop_skull', { stage: G.si + 1 });
+        burst(it.x, it.y, UI.accent2, 10);
+        floatText(it.x, it.y - 20, 'MISS −1', UI.accent2);
         if (G.lives <= 0) setTimeout(() => G.phase = 'gameOver', 400);
     } else {
         G.combo   = (now - G.lastPop < COMBO_MS) ? Math.min(G.combo + 1, 8) : 1;
@@ -257,70 +240,59 @@ function onPop(it) {
         if (it.def.slow) {
             if (G.slowTimer === 0) G.items.forEach(t => { if (!t.popped) t.vy *= 0.55; });
             G.slowTimer = SLOW_FRAMES;
-            floatText(it.x, it.y - 24, `+${pts}  ⏰SLOW!`, CUSTOM.theme.teal);
+            floatText(it.x, it.y - 24, `+${pts}  SLOW`, '#6EE7B7');
         } else {
             floatText(it.x, it.y - 24,
-                G.combo > 1 ? `+${pts}  🔥x${G.combo}` : `+${pts}`,
-                G.combo > 2 ? CUSTOM.theme.gold : '#FFF');
+                G.combo > 1 ? `+${pts}  ×${G.combo}` : `+${pts}`,
+                G.combo > 2 ? UI.accent : '#FFF');
         }
-        gaEvent('pop_item', { type: it.type, combo: G.combo });
-
         if (G.stagePts >= STAGES[G.si].target) {
             if (G.si >= STAGES.length - 1) {
                 setCleared();
                 setTimeout(() => { spawnConfetti(); G.phase = 'ending'; }, 350);
-                gaEvent('game_complete', { score: G.score });
             } else {
-                // シームレスにステージアップ
-                G.bgFrom  = { bg1: STAGES[G.si].bg1, bg2: STAGES[G.si].bg2 };
-                G.bgT     = 0;
-                G.si++;
+                G.bgFrom = { bg1: STAGES[G.si].bg1, bg2: STAGES[G.si].bg2 };
+                G.bgT = 0; G.si++;
                 G.stagePts = 0;
-                G.pool     = buildPool(G.si);
-                G.stageFlash    = STAGE_FLASH_FRAMES;
-                G.stageFlashMsg = G.si - 1; // メッセージindex（遷移後siから-1）
-                gaEvent('stage_clear', { stage: G.si });
+                G.pool = buildPool(G.si);
+                G.stageFlash = STAGE_FLASH_FRAMES;
+                G.stageFlashMsg = G.si - 1;
             }
         }
     }
 }
 
-// ── Analytics ─────────────────────────────────────────────
-function gaEvent(name, params = {}) {
-    if (typeof gtag === 'function') gtag('event', name, params);
-}
-
-// ── Draw helpers ───────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────
 function rrect(x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w,y,   x+w,y+h, r);
-    ctx.arcTo(x+w,y+h, x,  y+h, r);
-    ctx.arcTo(x,  y+h, x,  y,   r);
-    ctx.arcTo(x,  y,   x+w,y,   r);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
     ctx.closePath();
 }
-function pill(cx, cy, w, h, color) {
-    const r = h/2;
-    ctx.shadowColor = color;
-    ctx.shadowBlur  = 18;
-    ctx.fillStyle   = color;
-    rrect(cx-w/2, cy-h/2, w, h, r);
-    ctx.fill();
-    // shine overlay
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    rrect(cx-w/2+2, cy-h/2+2, w-4, (h-4)/2, r);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-}
-
 function lerpHex(a, b, t) {
     const p = s => [parseInt(s.slice(1,3),16), parseInt(s.slice(3,5),16), parseInt(s.slice(5,7),16)];
     const [ar,ag,ab] = p(a), [br,bg,bb] = p(b);
-    const r = Math.round(ar + (br-ar)*t), g = Math.round(ag + (bg-ag)*t), bv = Math.round(ab + (bb-ab)*t);
+    const r = Math.round(ar+(br-ar)*t), g = Math.round(ag+(bg-ag)*t), bv = Math.round(ab+(bb-ab)*t);
     return '#' + [r,g,bv].map(v=>v.toString(16).padStart(2,'0')).join('');
 }
+function hexA(hex, a) {
+    if (!hex.startsWith('#')) return hex;
+    let h = hex.replace('#','');
+    if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+    const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+}
 
+// hairline rule with pad
+function hairline(x1, y1, x2, y2, color = UI.line) {
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+// ── Background ────────────────────────────────────────────
 function drawBg() {
     const t   = G.bgT ?? 1;
     const cur = STAGES[G.si] ?? STAGES[STAGES.length-1];
@@ -331,8 +303,24 @@ function drawBg() {
     grad.addColorStop(1, c2);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
-    // twinkling stars（昼空は薄く、宇宙は明るく）
-    const starAlphaBase = G.bgT !== undefined ? 0.08 + 0.62 * (G.si / (STAGES.length - 1)) : 0.7;
+
+    // accent glow at the bottom (where balloons spawn)
+    const gh = ctx.createRadialGradient(W/2, H, 0, W/2, H, H*0.6);
+    gh.addColorStop(0, hexA(UI.accent, 0.10));
+    gh.addColorStop(1, hexA(UI.accent, 0));
+    ctx.fillStyle = gh;
+    ctx.fillRect(0, H*0.5, W, H*0.5);
+
+    // grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    const gx = Math.max(60, W / 9);
+    const gy = Math.max(80, H / 14);
+    for (let x = gx; x < W; x += gx) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = gy; y < H; y += gy) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+    // stars
+    const starAlphaBase = 0.10 + 0.55 * (G.si / (STAGES.length - 1));
     G.stars.forEach(s => {
         const a = Math.sin(G.frame * 0.04 + s.ph) * 0.35 + 0.55;
         ctx.globalAlpha = a * starAlphaBase;
@@ -344,426 +332,549 @@ function drawBg() {
     ctx.globalAlpha = 1;
 }
 
+// ── Items ─────────────────────────────────────────────────
 function puffyStarPath(cx, cy, outerR, innerR, n) {
     ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-        const outerA  = (i * 2 * Math.PI / n) - Math.PI / 2;
-        const innerA1 = outerA - Math.PI / n;
-        const innerA2 = outerA + Math.PI / n;
-        const ix1 = cx + Math.cos(innerA1) * innerR;
-        const iy1 = cy + Math.sin(innerA1) * innerR;
-        const ox  = cx + Math.cos(outerA)  * outerR;
-        const oy  = cy + Math.sin(outerA)  * outerR;
-        const ix2 = cx + Math.cos(innerA2) * innerR;
-        const iy2 = cy + Math.sin(innerA2) * innerR;
-        if (i === 0) ctx.moveTo(ix1, iy1);
-        else         ctx.lineTo(ix1, iy1);
+    for (let i=0; i<n; i++) {
+        const outerA = (i*2*Math.PI/n) - Math.PI/2;
+        const innerA1 = outerA - Math.PI/n, innerA2 = outerA + Math.PI/n;
+        const ix1 = cx + Math.cos(innerA1)*innerR, iy1 = cy + Math.sin(innerA1)*innerR;
+        const ox  = cx + Math.cos(outerA)*outerR,  oy  = cy + Math.sin(outerA)*outerR;
+        const ix2 = cx + Math.cos(innerA2)*innerR, iy2 = cy + Math.sin(innerA2)*innerR;
+        if (i === 0) ctx.moveTo(ix1, iy1); else ctx.lineTo(ix1, iy1);
         ctx.quadraticCurveTo(ox, oy, ix2, iy2);
     }
     ctx.closePath();
 }
-
 function drawBalloon(it) {
     ctx.save();
     if (it.def.slow) {
-        // ── clock: 星形 ──────────────────────────────────────
         const bg = ctx.createRadialGradient(it.x - R*0.28, it.y - R*0.28, 2, it.x, it.y, R);
         bg.addColorStop(0, it.def.color + 'EE');
         bg.addColorStop(1, it.def.bg    + 'CC');
-        ctx.fillStyle   = bg;
-        ctx.shadowColor = it.def.color;
-        ctx.shadowBlur  = 16;
-        puffyStarPath(it.x, it.y, R, R * 0.52, 5);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = bg;
+        ctx.shadowColor = it.def.color; ctx.shadowBlur = 16;
+        puffyStarPath(it.x, it.y, R, R*0.52, 5);
+        ctx.fill(); ctx.shadowBlur = 0;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = `${R * 0.95}px serif`;
+        ctx.font = `${R*0.95}px serif`;
         ctx.fillText(it.def.label, it.x, it.y + 2);
-        ctx.textBaseline = 'alphabetic';
-        ctx.restore();
-        return;
+        ctx.textBaseline = 'alphabetic'; ctx.restore(); return;
     }
-    // string
     if (!it.def.hazard) {
         ctx.beginPath();
         ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-        ctx.lineWidth   = 1.5;
+        ctx.lineWidth = 1.5;
         ctx.moveTo(it.x, it.y + R);
         ctx.lineTo(it.x, it.y + R + 14);
         ctx.stroke();
     }
-    // body
     const bg = ctx.createRadialGradient(it.x - R*0.28, it.y - R*0.28, 2, it.x, it.y, R);
     bg.addColorStop(0, it.def.color + 'EE');
     bg.addColorStop(1, it.def.bg    + 'CC');
     ctx.beginPath();
     ctx.arc(it.x, it.y, R, 0, Math.PI*2);
-    ctx.fillStyle   = bg;
-    ctx.shadowColor = it.def.color;
-    ctx.shadowBlur  = 14;
-    ctx.fill();
-    ctx.shadowBlur  = 0;
-    // shine
+    ctx.fillStyle = bg;
+    ctx.shadowColor = it.def.color; ctx.shadowBlur = 14;
+    ctx.fill(); ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.arc(it.x - R*0.28, it.y - R*0.28, R*0.18, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.38)';
-    ctx.fill();
-    // label
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `${R * 1.05}px serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.38)'; ctx.fill();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${R*1.05}px serif`;
     ctx.fillText(it.def.label, it.x, it.y + 2);
     ctx.textBaseline = 'alphabetic';
     ctx.restore();
 }
 
 // ── HUD ───────────────────────────────────────────────────
+const PAUSE_BTN = { size: 40 };
+
 function drawHUD() {
-    // score
-    ctx.textAlign = 'left';
-    ctx.font      = `bold 22px 'Orbitron', sans-serif`;
-    ctx.fillStyle = CUSTOM.theme.gold;
-    ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
-    ctx.fillText(`${G.score}`, 14, 35);
-    // lives
-    ctx.textAlign = 'right';
-    ctx.font      = '18px serif';
-    ctx.fillText(Array.from({length:3},(_,i)=>i<G.lives?'❤️':'🖤').join(''), W-12, 35);
-    ctx.shadowBlur = 0;
-    // stage label
-    ctx.font      = `bold 12px 'Noto Sans JP', sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.textAlign = 'center';
-    ctx.fillText(`STAGE ${G.si+1} / ${STAGES.length}`, W/2, 14);
-    // progress bar
+    const padX = 16;
+
+    // top hairline
+    hairline(padX, 56, W - padX, 56, UI.line);
+
+    // dot + STAGE label (left)
+    ctx.fillStyle = UI.accent;
+    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.save();
+    ctx.shadowColor = UI.accent; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(`STAGE ${G.si+1} / ${STAGES.length}`, padX + 16, 22);
+
+    // lives (right) — ticks first, then LIFE label to the left of them
+    const livesX = W - padX;
+    const tickW = 8, tickGap = 4;
+    const tickStart = livesX - (3 * tickW + 2 * tickGap);
+    for (let i = 0; i < 3; i++) {
+        const cx = tickStart + i * (tickW + tickGap);
+        if (i < G.lives) {
+            ctx.fillStyle = UI.accent;
+            ctx.fillRect(cx, 18, tickW, 8);
+        } else {
+            ctx.strokeStyle = UI.ink3; ctx.lineWidth = 1;
+            ctx.strokeRect(cx + 0.5, 18.5, tickW - 1, 7);
+        }
+    }
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText('LIFE', tickStart - 8, 22);
+
+    // score - large, left
+    ctx.font = `600 32px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(`${G.score}`.padStart(4, '0'), padX, 96);
+
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.fillText('SCORE', padX, 110);
+
+    // progress bar (right block)
+    const bx = padX + 110, by = 80, bw = W - padX*2 - 110, bh = 4;
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(bx, by, bw, bh);
     const prog = Math.min(G.stagePts / STAGES[G.si].target, 1);
-    const bw = W - 80, bx = 40, by = 20;
-    ctx.fillStyle = 'rgba(255,255,255,0.1)';
-    rrect(bx, by, bw, 7, 4); ctx.fill();
-    const pg = ctx.createLinearGradient(bx, 0, bx+bw, 0);
-    pg.addColorStop(0, CUSTOM.theme.purple);
-    pg.addColorStop(1, CUSTOM.theme.pink);
-    ctx.fillStyle   = pg;
-    ctx.shadowColor = CUSTOM.theme.purple;
-    ctx.shadowBlur  = 6;
-    rrect(bx, by, Math.max(bw*prog, 8), 7, 4); ctx.fill();
-    ctx.shadowBlur  = 0;
-    // 吹き出し（下から滑り込み→フェードアウト）
+    ctx.fillStyle = UI.accent;
+    ctx.fillRect(bx, by, Math.max(bw*prog, 2), bh);
+
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'left';
+    ctx.fillText('TARGET', bx, by - 6);
+    ctx.textAlign = 'right';
+    ctx.fillText(`${Math.floor(prog*100)}%`, bx + bw, by - 6);
+
+    // stage flash callout (rect, hard edges)
     if (G.stageFlash > 0) {
         const elapsed = STAGE_FLASH_FRAMES - G.stageFlash;
-        // Y オフセット：下から上へ滑り込み、最後にフェードアウト
         let slideY = 0;
-        if (elapsed < STAGE_FLASH_SLIDE) {
-            slideY = (1 - elapsed / STAGE_FLASH_SLIDE) * 120;
-        }
+        if (elapsed < STAGE_FLASH_SLIDE) slideY = (1 - elapsed / STAGE_FLASH_SLIDE) * 60;
         const alpha = G.stageFlash < STAGE_FLASH_SLIDE ? G.stageFlash / STAGE_FLASH_SLIDE : 1;
-
-        const msg    = STAGE_UP_MSG[G.stageFlashMsg] || '';
-        const bw     = Math.min(W - 40, 310);
-        const bh     = 56;
-        const bx     = W / 2;
-        const by     = H - 68 + slideY;
-        const tailSz = 12;
-
+        const msg = STAGE_UP_MSG[G.stageFlashMsg] || '';
+        const bw2 = Math.min(W - 32, 320), bh2 = 72;
+        const cx = W/2, cy = H - 110 + slideY;
         ctx.save();
         ctx.globalAlpha = alpha;
 
-        // 吹き出し本体
-        ctx.fillStyle   = '#FFFFFF';
-        ctx.shadowColor = 'rgba(0,0,0,0.35)';
-        ctx.shadowBlur  = 14;
-        rrect(bx - bw/2, by - bh/2, bw, bh, bh/2);
-        ctx.fill();
-        ctx.shadowBlur  = 0;
+        // accent border
+        ctx.fillStyle = UI.bg1;
+        ctx.fillRect(cx - bw2/2, cy - bh2/2, bw2, bh2);
+        ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
+        ctx.strokeRect(cx - bw2/2 + 0.5, cy - bh2/2 + 0.5, bw2 - 1, bh2 - 1);
 
-        // しっぽ（三角）
-        ctx.beginPath();
-        ctx.moveTo(bx - tailSz,     by + bh/2 - 2);
-        ctx.lineTo(bx + tailSz,     by + bh/2 - 2);
-        ctx.lineTo(bx,              by + bh/2 + tailSz);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fill();
+        ctx.font = `500 10px ${UI.fontMono}`;
+        ctx.fillStyle = UI.accent;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(`STAGE ${G.si+1}  //  SPEED UP`, cx - bw2/2 + 12, cy - bh2/2 + 10);
 
-        // テキスト
-        ctx.font      = `bold 16px 'Noto Sans JP', sans-serif`;
-        ctx.fillStyle = '#222';
-        ctx.textAlign = 'center';
-        ctx.fillText(msg, bx, by + 6);
-
+        ctx.font = `500 16px ${UI.fontJa}`;
+        ctx.fillStyle = UI.ink0;
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(msg, cx - bw2/2 + 12, cy + bh2/2 - 14);
         ctx.restore();
     }
-    // combo
+
+    // combo bar (bottom)
     if (G.combo > 1) {
-        const bump = Math.sin(G.frame * 0.14) * 1.5;
-        ctx.font      = `bold ${18+bump}px 'Orbitron', sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = CUSTOM.theme.gold;
-        ctx.shadowColor = '#FF6B00'; ctx.shadowBlur = 12;
-        ctx.fillText(`🔥 COMBO x${G.combo}`, W/2, H - 16);
-        ctx.shadowBlur = 0;
+        const cy = H - 32;
+        const cw = Math.min(W - 32, 240);
+        const cx = W/2 - cw/2;
+        ctx.font = `500 10px ${UI.fontMono}`;
+        ctx.fillStyle = UI.accent;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        ctx.fillText('COMBO', cx, cy - 8);
+        ctx.font = `600 14px ${UI.fontDisp}`;
+        ctx.textAlign = 'right';
+        ctx.fillStyle = UI.ink0;
+        ctx.fillText(`×${G.combo}`, cx + cw, cy - 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(cx, cy, cw, 2);
+        ctx.fillStyle = UI.accent;
+        ctx.fillRect(cx, cy, cw * (G.combo / 8), 2);
     }
-    // ⏸ ポーズボタン（右下）
-    ctx.globalAlpha = 0.55;
-    ctx.font        = '22px serif';
-    ctx.textAlign   = 'right';
-    ctx.fillStyle   = '#fff';
-    ctx.fillText('⏸', W - 10, H - 10);
-    ctx.globalAlpha = 1;
+
+    // slow indicator
+    if (G.slowTimer > 0) {
+        ctx.font = `500 10px ${UI.fontMono}`;
+        ctx.fillStyle = '#6EE7B7';
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.fillText(`SLOW  ${(G.slowTimer/60).toFixed(1)}s`, W - padX, 132);
+    }
+
+    // pause btn (top-right corner) — drawn as a small 2-bar icon inside a square
+    const pbX = W - padX - PAUSE_BTN.size, pbY = H - padX - PAUSE_BTN.size;
+    ctx.strokeStyle = UI.line2; ctx.lineWidth = 1;
+    ctx.strokeRect(pbX + 0.5, pbY + 0.5, PAUSE_BTN.size - 1, PAUSE_BTN.size - 1);
+    ctx.fillStyle = UI.ink1;
+    ctx.fillRect(pbX + 14, pbY + 12, 3, 16);
+    ctx.fillRect(pbX + 22, pbY + 12, 3, 16);
+    G._pauseBtn = { x: pbX + PAUSE_BTN.size/2, y: pbY + PAUSE_BTN.size/2, w: PAUSE_BTN.size, h: PAUSE_BTN.size };
 }
 
-// ── Screens ───────────────────────────────────────────────
-function drawPaused() {
-    drawGame();
-    // 暗いオーバーレイ
-    ctx.fillStyle = 'rgba(7,1,26,0.72)';
-    ctx.fillRect(0, 0, W, H);
-    // タイトル
-    ctx.textAlign   = 'center';
-    ctx.font        = `bold 32px 'Orbitron', sans-serif`;
-    ctx.fillStyle   = '#FFFFFF';
-    ctx.shadowColor = 'rgba(139,120,255,0.8)'; ctx.shadowBlur = 14;
-    ctx.fillText('PAUSE', W/2, H * 0.36);
-    ctx.shadowBlur  = 0;
-    // 再開ボタン
-    pill(W/2, H * 0.50, 190, 52, CUSTOM.theme.teal);
-    ctx.font      = `bold 18px 'Orbitron', sans-serif`;
-    ctx.fillStyle = '#fff';
-    ctx.fillText('再開  ▶', W/2, H * 0.50 + 8);
-    // やめるボタン
-    pill(W/2, H * 0.63, 190, 52, '#555566');
-    ctx.font      = `bold 18px 'Orbitron', sans-serif`;
-    ctx.fillStyle = '#ccc';
-    ctx.fillText('やめる', W/2, H * 0.63 + 8);
-    drawReticle();
+// ── Reticle ───────────────────────────────────────────────
+let cursorX = -999, cursorY = -999;
+function drawReticle(targetLock = false) {
+    const tint = tintedReticle(targetLock ? UI.accent2 : UI.accent);
+    if (!tint || cursorX < 0) return;
+    const s = RETICLE_SIZE;
+    ctx.save();
+    ctx.globalAlpha = 0.95;
+    ctx.shadowColor = targetLock ? UI.accent2 : UI.accent;
+    ctx.shadowBlur = 18;
+    ctx.drawImage(tint, cursorX - s/2, cursorY - s/2, s, s);
+    ctx.restore();
+    ctx.fillStyle = targetLock ? UI.accent2 : UI.accent;
+    ctx.beginPath(); ctx.arc(cursorX, cursorY, 2, 0, Math.PI*2); ctx.fill();
 }
 
 // ── Loading ───────────────────────────────────────────────
 function drawLoading() {
-    ctx.fillStyle = '#07011a';
+    ctx.fillStyle = UI.bg0;
     ctx.fillRect(0, 0, W, H);
-    const dots = '.'.repeat((Math.floor(G.frame / 12) % 4));
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font         = `bold 18px 'Noto Sans JP', sans-serif`;
-    ctx.fillStyle    = 'rgba(255,255,255,0.55)';
-    ctx.fillText(`${CONFIG.loading.text}${dots}`, W/2, H/2);
-    ctx.textBaseline = 'alphabetic';
+    // brand
+    ctx.font = `600 28px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('Sky', W/2 - 38, H*0.45);
+    ctx.font = `500 italic 28px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.accent;
+    ctx.fillText('Burst.', W/2 + 28, H*0.45);
+    // progress bar
+    const bx = W*0.2, by = H*0.55, bw = W*0.6;
+    ctx.strokeStyle = UI.line; ctx.strokeRect(bx + 0.5, by + 0.5, bw, 2);
+    ctx.fillStyle = UI.accent;
+    const p = Math.min(G.frame / LOADING_FRAMES, 1);
+    ctx.fillRect(bx, by, bw * p, 3);
+    // text
+    const dots = '.'.repeat((Math.floor(G.frame/12) % 4));
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.fillText(`${CONFIG.loading.text}${dots}`, W/2, H*0.62);
 }
 
-// ── Video fit draw（1:1 動画を中央に、周囲はぼかした動画で埋める）────
+// ── Video fit ─────────────────────────────────────────────
 function drawVideoFit(video) {
     if (!video || video.readyState < 2) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, W, H);
-        return;
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); return;
     }
-    // ぼかした動画を背景として全面に引き伸ばす（端のアーチファクト防止に +60）
     ctx.save();
     ctx.filter = 'blur(24px)';
     ctx.drawImage(video, -30, -30, W + 60, H + 60);
     ctx.filter = 'none';
     ctx.restore();
-    // 1:1 で中央に描画
     const size = Math.min(W, H);
     ctx.drawImage(video, (W - size) / 2, (H - size) / 2, size, size);
 }
 
-// ── Intro animation ───────────────────────────────────────
-// イントロ用バルーン（固定シード）
-const INTRO_BALLOONS = Array.from({length:12}, (_, i) => ({
-    x:     0.08 + (i % 6) * 0.17,
+// ── Intro ─────────────────────────────────────────────────
+const INTRO_BALLOONS = Array.from({length: 12}, (_, i) => ({
+    x: 0.08 + (i % 6) * 0.17,
     delay: i * 9,
     emoji: ['🎈','🎈','🎁','💕','🎈','🕶️'][i % 6],
-    size:  28 + (i % 3) * 10,
+    size: 28 + (i % 3) * 10,
 }));
-
 function drawIntro() {
     const f = G.frame;
-
-    // ── サブフェーズ A: MP4 再生 ────────────────────────────
-    if (G.introSub === 'video') {
-        drawVideoFit(introVideo);
-        return;
-    }
-
-    // ── サブフェーズ B: #152038 へのフェードアウト ─────────
+    if (G.introSub === 'video') { drawVideoFit(introVideo); return; }
     if (G.introSub === 'fade') {
         const t = Math.min(G.introFade / INTRO_FADE_FRAMES, 1);
         drawVideoFit(introVideo);
-        ctx.fillStyle = `rgba(21,32,56,${t})`;
+        ctx.fillStyle = `rgba(5,7,20,${t})`;
         ctx.fillRect(0, 0, W, H);
         return;
     }
-
-    // ── サブフェーズ C: バルーンアニメ（#152038 から開始）──
-    const alpha  = f < INTRO_BALLOON_FADEIN
-                 ? f / INTRO_BALLOON_FADEIN
-                 : f > INTRO_BALLOON_FRAMES - INTRO_BALLOON_FADEOUT
-                 ? Math.max(0, (INTRO_BALLOON_FRAMES - f) / INTRO_BALLOON_FADEOUT)
-                 : 1;
-
-    // 背景: #152038 固定（動画の終わり色と一致）
-    ctx.fillStyle = '#152038';
-    ctx.fillRect(0, 0, W, H);
-
+    const alpha = f < INTRO_BALLOON_FADEIN ? f / INTRO_BALLOON_FADEIN
+                : f > INTRO_BALLOON_FRAMES - INTRO_BALLOON_FADEOUT
+                    ? Math.max(0, (INTRO_BALLOON_FRAMES - f) / INTRO_BALLOON_FADEOUT)
+                    : 1;
+    ctx.fillStyle = UI.bg0; ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = alpha;
 
-    // バルーン群が下から浮かび上がる
+    // rising emoji items
     INTRO_BALLOONS.forEach(b => {
         const prog = Math.max(0, Math.min(1, (f - b.delay) / 80));
         if (prog <= 0) return;
-        const y   = H + b.size - (H + b.size * 2) * prog;
+        const y = H + b.size - (H + b.size*2) * prog;
         const wob = Math.sin((f - b.delay) * 0.06) * 8;
         ctx.font = `${b.size}px serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(b.emoji, b.x * W + wob, y);
+        ctx.fillText(b.emoji, b.x*W + wob, y);
     });
 
-    // メインテキスト（30f 以降で出現）
     if (f > 30) {
-        const ta = Math.min(1, (f - 30) / 30);
+        const ta = Math.min(1, (f - 30)/30);
         ctx.globalAlpha = alpha * ta;
 
-        if (f > 50) {
-            ['✨','⭐','💫'].forEach((s, i) => {
-                ctx.font = `20px serif`;
-                ctx.fillText(s, W * 0.2 + i * W * 0.3,
-                    H * 0.32 + Math.sin(f * 0.07 + i) * 12);
-            });
-        }
+        // Title — same language as title screen
+        ctx.font = `500 11px ${UI.fontMono}`;
+        ctx.fillStyle = UI.accent;
+        ctx.textAlign = 'center';
+        ctx.fillText('[ A FAN GAME · HBD 42 ]', W/2, H*0.36);
 
-        ctx.textAlign   = 'center';
-        ctx.font        = `bold 32px 'Orbitron', sans-serif`;
-        ctx.fillStyle   = CUSTOM.theme.gold;
-        ctx.shadowColor = CUSTOM.theme.pink; ctx.shadowBlur = 22;
-        ctx.fillText(CONFIG.intro.line1, W/2, H * 0.42);
-        ctx.font      = `bold 44px 'Orbitron', sans-serif`;
-        ctx.fillStyle = CUSTOM.theme.pink;
-        ctx.fillText(CONFIG.intro.line2, W/2, H * 0.54);
-        ctx.shadowBlur = 0;
+        ctx.font = `600 56px ${UI.fontDisp}`;
+        ctx.fillStyle = UI.ink0;
+        ctx.fillText('Sky', W/2 - 50, H*0.46);
+        ctx.font = `500 italic 56px ${UI.fontDisp}`;
+        ctx.fillStyle = UI.accent;
+        ctx.fillText('Burst.', W/2 + 40, H*0.46);
 
-        if (fanArtImg && fanArtImg.complete) {
-            const ir = 48;
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(W/2, H * 0.25, ir, 0, Math.PI*2);
-            ctx.clip();
-            ctx.drawImage(fanArtImg, W/2-ir, H*0.25-ir, ir*2, ir*2);
-            ctx.restore();
-        } else {
-            ctx.font = `56px serif`;
-            ctx.fillText(CONFIG.intro.fallbackIcon, W/2, H * 0.28);
-        }
+        ctx.font = `500 14px ${UI.fontJa}`;
+        ctx.fillStyle = UI.ink1;
+        ctx.fillText(CONFIG.intro.line2 || '', W/2, H*0.55);
     }
-
     ctx.globalAlpha = 1;
-    ctx.shadowBlur  = 0;
 }
 
-
+// ── Title ─────────────────────────────────────────────────
 function drawTitleImg() {
     const img = (gameCleared && titleImgCleared?.complete && titleImgCleared.naturalWidth > 0)
         ? titleImgCleared : titleImg;
     if (!img || !img.complete || img.naturalWidth === 0) return;
-    const iw = W;
-    const ih = iw * img.naturalHeight / img.naturalWidth;
-    ctx.drawImage(img, 0, H - ih, iw, ih);
+    // larger, anchored bottom-center, fully opaque (mascot as the hero)
+    const targetW = W * 1.0;
+    const scale = targetW / img.naturalWidth;
+    const targetH = img.naturalHeight * scale;
+    const x = (W - targetW) / 2;
+    const y = H - targetH * 0.92;
+    ctx.drawImage(img, x, y, targetW, targetH);
 }
 
 function drawTitle() {
-    drawBg();
+    // Title always uses the deep-night background, regardless of stage state
+    const c1 = '#0a0520', c2 = '#1a0535';
+    const tgrad = ctx.createLinearGradient(0, 0, 0, H);
+    tgrad.addColorStop(0, c1);
+    tgrad.addColorStop(1, c2);
+    ctx.fillStyle = tgrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // accent glow at the bottom
+    const tgh = ctx.createRadialGradient(W/2, H, 0, W/2, H, H*0.6);
+    tgh.addColorStop(0, hexA(UI.accent, 0.10));
+    tgh.addColorStop(1, hexA(UI.accent, 0));
+    ctx.fillStyle = tgh;
+    ctx.fillRect(0, H*0.5, W, H*0.5);
+
+    // grid + stars
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    const gx = Math.max(60, W / 9), gy = Math.max(80, H / 14);
+    for (let x = gx; x < W; x += gx) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = gy; y < H; y += gy) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    G.stars.forEach(s => {
+        const a = Math.sin(G.frame * 0.04 + s.ph) * 0.35 + 0.55;
+        ctx.globalAlpha = a * 0.55;
+        ctx.beginPath();
+        ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+        ctx.fillStyle = '#FFF'; ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
     drawTitleImg();
 
-    const pad = 16;
+    const padX = 20;
 
-    // ── タイトルピル ────────────────────────────────────────
-    const tH = 48, tY = H * 0.06;
-    ctx.fillStyle   = 'rgba(255,255,255,0.90)';
-    ctx.shadowColor = 'rgba(0,0,0,0.12)'; ctx.shadowBlur = 8;
-    rrect(pad, tY, W - pad*2, tH, tH/2); ctx.fill();
-    ctx.shadowBlur  = 0;
-    ctx.font        = `bold 22px 'Orbitron', sans-serif`;
-    ctx.fillStyle   = '#0a4a8c';
-    ctx.textAlign   = 'center';
-    ctx.fillText(CONFIG.title.subtitle, W/2, tY + tH/2 + 8);
+    // top hairline + meta
+    hairline(padX, 56, W - padX, 56, UI.line);
+    ctx.fillStyle = UI.accent;
+    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.save();
+    ctx.shadowColor = UI.accent; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('SKY BURST', padX + 14, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText(gameCleared ? 'CLEARED · v1.0' : 'v1.0', W - padX, 22);
 
-    // ── 説明カード ──────────────────────────────────────────
-    const rules  = CONFIG.title.instructions;
-    const lineH  = 26, cPad = 14;
-    const cH     = rules.length * lineH + cPad * 2;
-    const cY     = tY + tH + 10;
-    ctx.fillStyle   = 'rgba(210,235,255,0.80)';
-    ctx.shadowColor = 'rgba(0,0,0,0.08)'; ctx.shadowBlur = 6;
-    rrect(pad, cY, W - pad*2, cH, 14); ctx.fill();
-    ctx.shadowBlur  = 0;
-    ctx.font        = `14px 'Noto Sans JP', sans-serif`;
-    ctx.fillStyle   = '#0a2a4a';
-    ctx.textAlign   = 'left';
-    rules.forEach((r, i) => ctx.fillText(r, pad + cPad, cY + cPad + 16 + i * lineH));
-    ctx.textAlign   = 'center';
+    // Title block — eyebrow with pulsing dot
+    const pulse = 0.5 + Math.sin(G.frame * 0.08) * 0.3;
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = UI.accent2;
+    ctx.beginPath(); ctx.arc(padX + 4, 96, 3, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.font = `600 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.accent2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('LIVE · A FAN GAME FOR 42', padX + 14, 96);
 
-    // ── START ボタン ────────────────────────────────────────
-    const by = cY + cH + 28 + 26;
-    pill(W/2, by, 190, 52, CUSTOM.theme.pink);
-    ctx.font      = `bold 20px 'Orbitron', sans-serif`;
-    ctx.fillStyle = '#FFF';
-    ctx.fillText(CONFIG.title.startButton, W/2, by + 8);
+    // Big wordmark with subtle parallax
+    const drift = Math.sin(G.frame * 0.02) * 2;
+    ctx.font = `700 72px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('Sky', padX, 168 + drift);
 
-    // ── イントロ→タイトル フェードイン ──────────────────────
+    ctx.save();
+    ctx.font = `500 italic 72px ${UI.fontDisp}`;
+    ctx.shadowColor = hexA(UI.accent, 0.6);
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = UI.accent;
+    ctx.fillText('Burst.', padX, 232 + drift);
+    ctx.restore();
+
+    // Subtitle row with version tag
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.fillText('FPS · BALLOON BUSTER', padX, 262);
+    const tagW = 44, tagH = 20, tagX = W - padX - tagW, tagY = 248;
+    ctx.strokeStyle = UI.line2; ctx.lineWidth = 1;
+    ctx.strokeRect(tagX + 0.5, tagY + 0.5, tagW - 1, tagH - 1);
+    ctx.font = `600 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.accent;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(':42', tagX + tagW/2, tagY + tagH/2 + 1);
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    hairline(padX, 278, W - padX, 278);
+
+    // Rules block — with dim plate behind for legibility over mascot
+    const rules = CONFIG.title.instructions;
+    const lineH = 30;
+    const rTop = H * 0.36;
+    const rH = lineH * rules.length + 36;
+
+    ctx.save();
+    const grad = ctx.createLinearGradient(0, rTop - 24, 0, rTop + rH + 8);
+    grad.addColorStop(0, hexA(UI.bg0, 0));
+    grad.addColorStop(0.18, hexA(UI.bg0, 0.78));
+    grad.addColorStop(0.82, hexA(UI.bg0, 0.78));
+    grad.addColorStop(1, hexA(UI.bg0, 0));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, rTop - 24, W, rH + 32);
+    ctx.restore();
+
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('HOW TO PLAY', padX, rTop - 6);
+
+    rules.forEach((r, i) => {
+        const y = rTop + i * lineH;
+        hairline(padX, y, W - padX, y);
+        if (i === rules.length - 1) hairline(padX, y + lineH, W - padX, y + lineH);
+        ctx.font = `500 10px ${UI.fontMono}`;
+        ctx.fillStyle = UI.ink2;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(i+1).padStart(2, '0'), padX + 4, y + lineH/2);
+        ctx.font = `400 13px ${UI.fontJa}`;
+        ctx.fillStyle = i === 2 ? UI.accent2 : UI.ink1;
+        ctx.fillText(r, padX + 32, y + lineH/2);
+    });
+
+    // START button — hard-edged accent rect
+    const bw = W - padX*2, bh = 56;
+    const bx = padX, by = H - 110;
+    G._titleBtnY = by + bh/2;
+    G._titleBtnW = bw;
+    G._titleBtnH = bh;
+
+    ctx.save();
+    ctx.shadowColor = hexA(UI.accent, 0.5);
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = UI.accent;
+    rrect(bx, by, bw, bh, 4); ctx.fill();
+    ctx.restore();
+
+    ctx.font = `600 18px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.bg0;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    let cx = bx + 24;
+    for (const ch of 'START') {
+        ctx.fillText(ch, cx, by + bh/2);
+        cx += ctx.measureText(ch).width + 4;
+    }
+    // arrow
+    const ax = bx + bw - 28, ay = by + bh/2;
+    ctx.strokeStyle = UI.bg0; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ax - 22, ay); ctx.lineTo(ax + 6, ay); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(ax - 4, ay - 8); ctx.lineTo(ax + 6, ay); ctx.lineTo(ax - 4, ay + 8);
+    ctx.stroke();
+
+    // sub-label below
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('TAP / CLICK / SPACE', W/2, by + bh + 18);
+
+    // bottom meta
+    hairline(padX, H - 38, W - padX, H - 38);
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink3;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('AIM · POP', padX, H - 22);
+    ctx.textAlign = 'center';
+    ctx.fillText('FOR THE BIRTHDAY BOY · 42', W/2, H - 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('BEST · 128', W - padX, H - 22);
+
+    // intro fade overlay
     if (G.titleFade < TITLE_FADE_FRAMES) {
-        ctx.fillStyle = `rgba(21,32,56,${1 - G.titleFade / TITLE_FADE_FRAMES})`;
+        ctx.fillStyle = `rgba(5,7,20,${1 - G.titleFade / TITLE_FADE_FRAMES})`;
         ctx.fillRect(0, 0, W, H);
     }
 
-    // ── クリア済みのときだけ ↻ リセットボタン（こっそり）────
+    // reset btn for cleared state
     if (gameCleared) {
-        ctx.globalAlpha = 0.35;
-        ctx.font        = `18px serif`;
-        ctx.fillStyle   = '#fff';
-        ctx.textAlign   = 'right';
-        ctx.fillText('↻', W - 10, H - 10);
+        ctx.globalAlpha = 0.4;
+        ctx.font = `500 14px ${UI.fontMono}`;
+        ctx.fillStyle = UI.ink1;
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.fillText('↻', W - 16, H - 56);
         ctx.globalAlpha = 1;
     }
-
-    // ボタン Y をグローバルに保持（onInput で参照）
-    G._titleBtnY = by;
 }
 
+// ── Starting (countdown callout) ──────────────────────────
 function drawStarting() {
     drawBg();
     drawTitleImg();
     if (G.frame < START_WAIT_FRAMES) return;
     const elapsed = G.frame - START_WAIT_FRAMES;
-    const slideF  = START_SLIDE_FRAMES;
-    const slideY  = elapsed < slideF ? (1 - elapsed / slideF) * 80 : 0;
-    const alpha   = elapsed < slideF ? elapsed / slideF : 1;
+    const slideF = START_SLIDE_FRAMES;
+    const slideY = elapsed < slideF ? (1 - elapsed / slideF) * 60 : 0;
+    const alpha  = elapsed < slideF ? elapsed / slideF : 1;
     const msg = 'いっくよー！';
-    const bw = 220, bh = 58, bx = W / 2, by = H * 0.55 + slideY, tailSz = 12;
+    const bw = Math.min(W - 32, 280), bh = 72;
+    const cx = W/2, cy = H*0.55 + slideY;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle   = '#FFFFFF';
-    ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 14;
-    rrect(bx - bw/2, by - bh/2, bw, bh, bh/2); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.moveTo(bx - tailSz, by + bh/2 - 2);
-    ctx.lineTo(bx + tailSz, by + bh/2 - 2);
-    ctx.lineTo(bx,          by + bh/2 + tailSz);
-    ctx.fillStyle = '#FFFFFF'; ctx.fill();
-    ctx.font      = `bold 22px 'Noto Sans JP', sans-serif`;
-    ctx.fillStyle = '#222'; ctx.textAlign = 'center';
-    ctx.fillText(msg, bx, by + 8);
+    ctx.fillStyle = UI.bg1;
+    ctx.fillRect(cx - bw/2, cy - bh/2, bw, bh);
+    ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
+    ctx.strokeRect(cx - bw/2 + 0.5, cy - bh/2 + 0.5, bw - 1, bh - 1);
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.accent;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('STAGE 1  //  GO', cx - bw/2 + 12, cy - bh/2 + 10);
+    ctx.font = `500 18px ${UI.fontJa}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(msg, cx - bw/2 + 12, cy + bh/2 - 14);
     ctx.restore();
 }
 
+// ── Game render ───────────────────────────────────────────
 function drawGame() {
     drawBg();
     G.items.forEach(it => { if (!it.popped) drawBalloon(it); });
-    // particles
     G.particles.forEach(p => {
         ctx.globalAlpha = p.life;
         if (p.type === 'text') {
-            ctx.font      = `bold 16px 'Noto Sans JP', sans-serif`;
+            ctx.font = `600 13px ${UI.fontMono}`;
             ctx.fillStyle = p.color;
             ctx.textAlign = 'center';
             ctx.fillText(p.text, p.x, p.y);
@@ -774,37 +885,126 @@ function drawGame() {
         ctx.globalAlpha = 1;
     });
     drawHUD();
-    drawReticle();
+
+    // target lock when reticle is over a hazard
+    let lock = false;
+    for (const it of G.items) {
+        if (it.popped || !it.def.hazard) continue;
+        const dx = cursorX - it.x, dy = cursorY - it.y;
+        if (dx*dx + dy*dy < R*R*1.8) { lock = true; break; }
+    }
+    drawReticle(lock);
 }
 
-function drawOverlay(alpha = 0.8) {
-    ctx.fillStyle = `rgba(7,1,26,${alpha})`;
+function drawOverlay(alpha = 0.85) {
+    ctx.fillStyle = hexA(UI.bg0, alpha);
     ctx.fillRect(0, 0, W, H);
 }
 
-function drawGameOver() {
-    drawGame(); drawOverlay();
-    ctx.textAlign = 'center';
-    ctx.font      = `bold 38px 'Orbitron', sans-serif`;
-    ctx.fillStyle = '#FF4444';
-    ctx.shadowColor = '#FF0000'; ctx.shadowBlur = 20;
-    ctx.fillText(CONFIG.gameOver.title, W/2, H*0.35);
-    ctx.shadowBlur = 0;
-    ctx.font      = `bold 24px 'Orbitron', sans-serif`;
-    ctx.fillStyle = CUSTOM.theme.gold;
-    ctx.fillText(`SCORE:  ${G.score}`, W/2, H*0.46);
-    ctx.font      = `15px 'Noto Sans JP', sans-serif`;
-    ctx.fillStyle = '#C4AAEE';
-    ctx.fillText(CONFIG.gameOver.message, W/2, H*0.55);
-    const by = H * 0.68;
-    pill(W/2, by, 190, 52, CUSTOM.theme.pink);
-    ctx.font      = `bold 18px 'Orbitron', sans-serif`;
-    ctx.fillStyle = '#FFF';
-    ctx.fillText(CONFIG.gameOver.retryButton, W/2, by + 8);
+// ── Pause ─────────────────────────────────────────────────
+function drawPaused() {
+    drawGame();
+    drawOverlay(0.78);
+    const padX = 20;
+
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.accent;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('[ PAUSED ]', padX, H*0.32);
+
+    ctx.font = `600 48px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.fillText('On hold.', padX, H*0.32 + 60);
+
+    hairline(padX, H*0.42 + 40, W - padX, H*0.42 + 40);
+
+    // resume btn
+    const bw = W - padX*2, bh = 52;
+    const rby = H*0.55;
+    G._pauseResumeY = rby + bh/2;
+    G._pauseQuitY = rby + bh + 16 + bh/2;
+
+    ctx.save();
+    ctx.shadowColor = hexA(UI.accent, 0.4);
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = UI.accent;
+    rrect(padX, rby, bw, bh, 4); ctx.fill();
+    ctx.restore();
+    ctx.font = `600 16px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.bg0;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('RESUME', W/2, rby + bh/2);
+
+    // quit btn
+    const qy = rby + bh + 16;
+    ctx.strokeStyle = UI.line2; ctx.lineWidth = 1;
+    ctx.strokeRect(padX + 0.5, qy + 0.5, bw - 1, bh - 1);
+    ctx.font = `500 14px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink1;
+    ctx.fillText('QUIT TO TITLE', W/2, qy + bh/2);
+
+    drawReticle(false);
 }
 
+// ── Game Over ─────────────────────────────────────────────
+function drawGameOver() {
+    drawGame();
+    drawOverlay(0.85);
+    const padX = 20;
+
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.accent2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('[ RUN ENDED ]', padX, H*0.22);
+
+    ctx.font = `600 56px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.fillText('Game', padX, H*0.22 + 64);
+    ctx.font = `500 italic 56px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.accent2;
+    ctx.fillText('over.', padX, H*0.22 + 124);
+
+    hairline(padX, H*0.22 + 150, W - padX, H*0.22 + 150);
+
+    // score row
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.fillText('FINAL SCORE', padX, H*0.55);
+    ctx.font = `600 40px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.fillText(`${G.score}`.padStart(4, '0'), padX, H*0.55 + 44);
+
+    // message
+    ctx.font = `400 12px ${UI.fontJa}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.fillText(CONFIG.gameOver.message, padX, H*0.55 + 70);
+
+    // retry btn
+    const bw = W - padX*2, bh = 52;
+    const by = H - 150;
+    G._retryY = by + bh/2;
+    ctx.save();
+    ctx.shadowColor = hexA(UI.accent, 0.4);
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = UI.accent;
+    rrect(padX, by, bw, bh, 4); ctx.fill();
+    ctx.restore();
+    ctx.font = `600 16px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.bg0;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('TRY AGAIN', W/2, by + bh/2);
+}
+
+// ── Ending ────────────────────────────────────────────────
 function drawEnding() {
     drawBg();
+    // hard reset of canvas state to avoid any leak from prior frames
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.filter = 'none';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+
     // confetti
     G.confetti.forEach(c => {
         ctx.save();
@@ -814,29 +1014,27 @@ function drawEnding() {
         ctx.restore();
     });
 
-    // ぴょこぴょこキャラ（背景レイヤー、半透明）
+    // bouncers (background mascot fragments)
     G.bouncers.forEach((b, bi) => {
-        const img = bouncerImgs[bi]?.complete ? bouncerImgs[bi]
-                  : fanArtImg?.complete       ? fanArtImg
+        const cand = bouncerImgs[bi];
+        const img = (cand && cand.complete && cand.naturalWidth > 0) ? cand
+                  : (titleImg && titleImg.complete && titleImg.naturalWidth > 0) ? titleImg
                   : null;
         ctx.save();
-        ctx.globalAlpha = 0.82;
+        ctx.globalAlpha = 0.85;
         if (img) {
             const r = b.size / 2;
             ctx.beginPath();
-            ctx.arc(b.x, b.y, r, 0, Math.PI*2);
+            ctx.rect(b.x - r, b.y - r, b.size, b.size);
             ctx.clip();
             ctx.drawImage(img, b.x - r, b.y - r, b.size, b.size);
-        } else {
-            ctx.font = `${b.size}px serif`;
-            ctx.textAlign    = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(CONFIG.ending.fallbackIcon, b.x, b.y);
-            ctx.textBaseline = 'alphabetic';
+            ctx.strokeStyle = UI.accent;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(b.x - r + 0.5, b.y - r + 0.5, b.size - 1, b.size - 1);
         }
         ctx.restore();
     });
-    // periodic firework bursts
+
     G.particles.forEach(p => {
         ctx.globalAlpha = p.life;
         if (p.type !== 'text') {
@@ -845,39 +1043,74 @@ function drawEnding() {
         }
         ctx.globalAlpha = 1;
     });
-    // main message
-    const t = G.frame * 0.035;
-    ctx.textAlign = 'center';
-    // icon / fan art
-    if (fanArtImg && fanArtImg.complete) {
-        const iw = 120, ih = 120;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(W/2, H*0.20, iw/2, 0, Math.PI*2);
-        ctx.clip();
-        ctx.drawImage(fanArtImg, W/2-iw/2, H*0.20-ih/2, iw, ih);
-        ctx.restore();
-    } else {
-        ctx.font = `${62 + Math.sin(t)*6}px serif`;
-        ctx.fillText(CONFIG.ending.fallbackIcon, W/2, H*0.22);
-    }
-    ctx.font      = `bold 26px 'Orbitron', sans-serif`;
-    ctx.fillStyle = CUSTOM.theme.gold;
-    ctx.shadowColor = CUSTOM.theme.pink; ctx.shadowBlur = 20;
-    ctx.fillText(CONFIG.ending.subtitle, W/2, H*0.38);
-    ctx.shadowBlur = 0;
-    ctx.font      = `bold 22px 'Orbitron', sans-serif`;
-    ctx.fillStyle = CUSTOM.theme.pink;
-    ctx.fillText(CONFIG.ending.message, W/2, H*0.44);
-    ctx.font      = `bold 20px 'Orbitron', sans-serif`;
-    ctx.fillStyle = '#E0C9FF';
-    ctx.fillText(`${CONFIG.ending.scorePrefix}${G.score}`, W/2, H*0.62);
-    // もう一度あそぶボタン
-    const by = H * 0.76;
-    pill(W/2, by, 220, 52, CUSTOM.theme.pink);
-    ctx.font      = `bold 18px 'Orbitron', sans-serif`;
-    ctx.fillStyle = '#FFF';
-    ctx.fillText(CONFIG.ending.replayButton, W/2, by + 8);
+
+    const padX = 20;
+
+    // top hairline + meta
+    hairline(padX, 56, W - padX, 56);
+    ctx.fillStyle = UI.accent;
+    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('SKY BURST  ·  CLEARED', padX + 14, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('PERFECT 42', W - padX, 22);
+
+    // Hero text
+    ctx.font = `500 11px ${UI.fontMono}`;
+    ctx.fillStyle = UI.accent;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('[ CONGRATULATIONS ]', padX, H * 0.13);
+
+    ctx.font = `600 56px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.fillText('Happy', padX, H * 0.20);
+    ctx.font = `500 italic 56px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.accent;
+    ctx.fillText('42.', padX, H * 0.27);
+
+    ctx.font = `400 14px ${UI.fontJa}`;
+    ctx.fillStyle = UI.ink1;
+    ctx.fillText(CONFIG.ending.message, padX, H * 0.31);
+    hairline(padX, H * 0.33, W - padX, H * 0.33);
+
+    // Score row
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('FINAL SCORE', padX, H * 0.38);
+    ctx.font = `600 56px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.fillText(`${G.score}`.padStart(4, '0'), padX, H * 0.45);
+
+    // Stats grid
+    const sy = H * 0.50;
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.ink2;
+    ctx.fillText('STAGES CLEARED', padX, sy);
+    ctx.fillText('STATUS', W/2, sy);
+    ctx.font = `600 22px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.fillText(`${STAGES.length}/${STAGES.length}`, padX, sy + 28);
+    ctx.fillStyle = UI.accent;
+    ctx.fillText('PERFECT', W/2, sy + 28);
+    hairline(padX, sy + 48, W - padX, sy + 48);
+
+    // Replay btn
+    const bw = W - padX*2, bh = 56;
+    const by = H - 150;
+    G._replayY = by + bh/2;
+    ctx.save();
+    ctx.shadowColor = hexA(UI.accent, 0.5);
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = UI.accent;
+    rrect(padX, by, bw, bh, 4); ctx.fill();
+    ctx.restore();
+    ctx.font = `600 18px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.bg0;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('PLAY AGAIN', W/2, by + bh/2);
 }
 
 // ── Update ────────────────────────────────────────────────
@@ -885,34 +1118,25 @@ function update() {
     if (G.phase === 'paused') return;
     G.frame++;
 
-    // ローディング → イントロへ
     if (G.phase === 'loading') {
         if (G.frame >= LOADING_FRAMES) {
-            G.phase    = 'intro';
+            G.phase = 'intro';
             G.introSub = introVideo ? 'video' : 'balloons';
-            G.frame    = 0;
+            G.frame = 0;
             G.introFade = 0;
-            // 動画を再生開始
-            if (introVideo) introVideo.play().catch(() => {});
+            if (introVideo) introVideo.play().catch(() => { introVideoEnded = true; });
         }
         return;
     }
-    // イントロ各サブフェーズ
     if (G.phase === 'intro') {
         if (G.introSub === 'video') {
-            // 動画終了を検知したら フェードへ
-            if (introVideoEnded) {
-                G.introSub  = 'fade';
-                G.introFade = 0;
-            }
+            if (introVideoEnded) { G.introSub = 'fade'; G.introFade = 0; }
         } else if (G.introSub === 'fade') {
             G.introFade++;
-            if (G.introFade >= INTRO_FADE_FRAMES) {
-                G.introSub = 'balloons';
-                G.frame    = 0;
-            }
-        } else if (G.introSub === 'balloons') {
-            if (G.frame >= INTRO_BALLOON_FRAMES) { G.phase = 'title'; G.frame = 0; G.titleFade = 0; }
+            if (G.introFade >= INTRO_FADE_FRAMES) { G.phase = 'title'; G.frame = 0; G.titleFade = 0; }
+        } else {
+            // skip balloon intro entirely
+            G.phase = 'title'; G.frame = 0; G.titleFade = 0;
         }
         return;
     }
@@ -920,47 +1144,45 @@ function update() {
         if (G.titleFade < TITLE_FADE_FRAMES) G.titleFade++;
     }
     if (G.phase === 'starting') {
-        if (G.frame >= START_TOTAL_FRAMES) { G.phase = 'playing'; G.frame = 0; gaEvent('game_start'); }
+        if (G.frame >= START_TOTAL_FRAMES) { G.phase = 'playing'; G.frame = 0; }
     }
     if (G.phase === 'playing') {
         const stage = STAGES[G.si];
         if (G.frame % stage.interval === 0) {
             spawnItem();
-            if (G.si >= 1 && G.frame % (stage.interval * 2) === 0) spawnItem();
+            if (G.si >= 1 && G.frame % (stage.interval*2) === 0) spawnItem();
         }
         G.items = G.items.filter(it => {
             if (it.popped) return false;
-            it.y      += it.vy;
-            it.x      += it.vx;
+            it.y += it.vy; it.x += it.vx;
             it.wobble += 0.025;
-            it.x      += Math.sin(it.wobble) * 0.35;
-            return it.y > -R * 3;
+            it.x += Math.sin(it.wobble) * 0.35;
+            return it.y > -R*3;
         });
         if (G.combo > 1 && Date.now() - G.lastPop > COMBO_MS) G.combo = 1;
         if (G.bgT < 1) G.bgT = Math.min(G.bgT + 0.018, 1);
         if (G.stageFlash > 0) G.stageFlash--;
-        if (G.slowTimer  > 0) G.slowTimer--;
+        if (G.slowTimer > 0) G.slowTimer--;
     }
     if (G.phase === 'ending') {
         G.confetti.forEach(c => {
             c.x += c.vx; c.y += c.vy; c.rot += c.rotV;
-            if (c.y > H + 20) { c.y = -10; c.x = Math.random() * W; }
+            if (c.y > H + 20) { c.y = -10; c.x = Math.random()*W; }
         });
         if (G.frame % 75 === 0) {
-            const cols = [CUSTOM.theme.pink, CUSTOM.theme.gold, CUSTOM.theme.purple];
-            burst(Math.random()*W, Math.random()*H*0.6, cols[G.frame%3], 18);
+            const cols = [UI.accent, UI.accent2, '#FFD700', '#A78BFA'];
+            burst(Math.random()*W, Math.random()*H*0.6, cols[G.frame%cols.length], 18);
         }
-        // ぴょこぴょこキャラ
         G.bouncers.forEach((b, bi) => {
-            if (b.x === 0) { b.x = W * (0.3 + bi * 0.4); b.y = H * 0.3; }
+            if (b.x === 0) { b.x = W*(0.3 + bi*0.4); b.y = H*0.3; }
             b.x += b.vx; b.y += b.vy;
             b.vy += 0.10;
-            const r = b.size / 2;
-            if (b.x - r < 0)  { b.x = r;   b.vx =  Math.abs(b.vx) * 0.92; }
-            if (b.x + r > W)  { b.x = W-r; b.vx = -Math.abs(b.vx) * 0.92; }
-            if (b.y - r < 0)  { b.y = r;   b.vy =  Math.abs(b.vy) * 0.85; }
-            if (b.y + r > H)  { b.y = H-r; b.vy = -Math.abs(b.vy) * 0.88;
-                                 b.vx += (Math.random()-0.5) * 1.5; }
+            const r = b.size/2;
+            if (b.x - r < 0)  { b.x = r;   b.vx =  Math.abs(b.vx)*0.92; }
+            if (b.x + r > W)  { b.x = W-r; b.vx = -Math.abs(b.vx)*0.92; }
+            if (b.y - r < 0)  { b.y = r;   b.vy =  Math.abs(b.vy)*0.85; }
+            if (b.y + r > H)  { b.y = H-r; b.vy = -Math.abs(b.vy)*0.88;
+                                b.vx += (Math.random()-0.5)*1.5; }
         });
     }
     G.particles = G.particles.filter(p => {
@@ -971,14 +1193,13 @@ function update() {
     });
 }
 
-// ── Render ────────────────────────────────────────────────
+// ── Render dispatch ───────────────────────────────────────
 function render() {
     ctx.clearRect(0, 0, W, H);
-    // ゲーム操作中だけシステムカーソルを非表示にしてレティクルに置き換える
     canvas.style.cursor = (G.phase === 'playing' || G.phase === 'paused') ? 'none' : '';
     switch(G.phase) {
-        case 'loading':  drawLoading(); break;
-        case 'intro':    drawIntro();   break;
+        case 'loading':  drawLoading();  break;
+        case 'intro':    drawIntro();    break;
         case 'title':    drawTitle();    break;
         case 'starting': drawStarting(); break;
         case 'playing':  drawGame();     break;
@@ -987,7 +1208,6 @@ function render() {
         case 'ending':   drawEnding();   break;
     }
 }
-
 function loop() { update(); render(); requestAnimationFrame(loop); }
 
 // ── Input ─────────────────────────────────────────────────
@@ -995,74 +1215,71 @@ function getXY(e) {
     const rect = canvas.getBoundingClientRect();
     const sx = W / rect.width, sy = H / rect.height;
     const src = e.touches ? e.touches[0] : e;
-    return { x:(src.clientX - rect.left)*sx, y:(src.clientY - rect.top)*sy };
+    return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
 }
-function hit(x, y, cx, cy, w, h) {
+function inRect(x, y, cx, cy, w, h) {
     return Math.abs(x-cx) < w/2 && Math.abs(y-cy) < h/2;
 }
 
 function onInput(e) {
     e.preventDefault();
-    const {x, y} = getXY(e);
+    const { x, y } = getXY(e);
     switch(G.phase) {
         case 'title':
-            if (hit(x, y, W/2, G._titleBtnY ?? H*0.52, 190, 52)) {
-                G.phase = 'starting';
-                G.frame = 0;
-            } else if (gameCleared && hit(x, y, W - 20, H - 16, 36, 36)) {
+            if (inRect(x, y, W/2, G._titleBtnY ?? H*0.85, G._titleBtnW ?? W-40, G._titleBtnH ?? 56)) {
+                G.phase = 'starting'; G.frame = 0;
+            } else if (gameCleared && inRect(x, y, W - 16, H - 56, 36, 36)) {
                 resetCleared();
             }
             break;
         case 'playing':
-            if (hit(x, y, W - 20, H - 16, 44, 44)) {
+            if (G._pauseBtn && inRect(x, y, G._pauseBtn.x, G._pauseBtn.y, G._pauseBtn.w, G._pauseBtn.h)) {
                 G.phase = 'paused';
-            } else {
-                tryPop(x, y);
-            }
+            } else { tryPop(x, y); }
             break;
         case 'paused':
-            if (hit(x, y, W/2, H * 0.50, 190, 52)) {
-                G.phase = 'playing';
-            } else if (hit(x, y, W/2, H * 0.63, 190, 52)) {
-                replayState();
-            }
+            if (inRect(x, y, W/2, G._pauseResumeY ?? H*0.55, W - 40, 52)) G.phase = 'playing';
+            else if (inRect(x, y, W/2, G._pauseQuitY ?? H*0.65, W - 40, 52)) replayState();
             break;
         case 'gameOver':
-            if (hit(x, y, W/2, H*0.68, 190, 52)) replayState();
+            if (inRect(x, y, W/2, G._retryY ?? H*0.85, W - 40, 52)) replayState();
             break;
         case 'ending':
-            if (hit(x, y, W/2, H*0.76, 220, 52)) replayState();
+            if (inRect(x, y, W/2, G._replayY ?? H*0.85, W - 40, 56)) replayState();
             break;
     }
 }
+canvas.addEventListener('click', onInput);
+canvas.addEventListener('touchstart', onInput, { passive: false });
 
-canvas.addEventListener('click',      onInput);
-canvas.addEventListener('touchstart', onInput, { passive:false });
+// debug shortcuts: E=ending, O=gameover, T=title, P=playing
+window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'e') {
+        G.score = 6000; G.si = STAGES.length - 1; G.stagePts = STAGES[G.si].target;
+        spawnConfetti(); setCleared(); G.phase = 'ending'; G.frame = 0;
+    } else if (k === 'o') {
+        G.score = 1234; G.lives = 0; G.phase = 'gameOver';
+    } else if (k === 't') {
+        replayState();
+    } else if (k === 'p') {
+        G.phase = 'playing'; G.frame = 0;
+    } else if (k === ' ' || k === 'enter') {
+        if (G.phase === 'title') { G.phase = 'starting'; G.frame = 0; }
+    }
+});
 
-// ── レティクル追従 ─────────────────────────────────────────
-let cursorX = -999, cursorY = -999;
 function updateCursor(e) {
     const rect = canvas.getBoundingClientRect();
     const sx = W / rect.width, sy = H / rect.height;
     const src = e.touches ? e.touches[0] : e;
-    if (src) { cursorX = (src.clientX - rect.left) * sx; cursorY = (src.clientY - rect.top) * sy; }
+    if (src) { cursorX = (src.clientX - rect.left)*sx; cursorY = (src.clientY - rect.top)*sy; }
 }
-canvas.addEventListener('mousemove',  updateCursor);
-canvas.addEventListener('touchmove',  updateCursor, { passive: true });
+canvas.addEventListener('mousemove', updateCursor);
+canvas.addEventListener('touchmove', updateCursor, { passive: true });
 canvas.addEventListener('mouseleave', () => { cursorX = -999; cursorY = -999; });
 
-function drawReticle() {
-    if (!reticleImg || !reticleImg.complete || reticleImg.naturalWidth === 0) return;
-    if (cursorX < 0) return;
-    const s = RETICLE_SIZE;
-    ctx.drawImage(reticleImg, cursorX - s / 2, cursorY - s / 2, s, s);
-}
-
-function replayState() {
-    initState();
-    G.phase = 'title';
-    G.frame = 0;
-}
+function replayState() { initState(); G.phase = 'title'; G.frame = 0; }
 initState();
 loop();
 </script>
