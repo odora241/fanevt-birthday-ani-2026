@@ -18,12 +18,6 @@
 //  Dark-neon UI shell. Game logic preserved; visuals reskinned.
 // ==========================================================
 
-const CUSTOM = {
-    ...CONFIG.assets,
-    name:     CONFIG.ending.message,
-    subtitle: CONFIG.ending.subtitle,
-    theme:    CONFIG.theme,
-};
 const STAGES       = CONFIG.stages;
 const STAGE_UP_MSG = CONFIG.stageUpMessages;
 
@@ -59,9 +53,6 @@ const COMBO_MS = 1500;
 // timing
 const LOADING_FRAMES        = 100;
 const INTRO_FADE_FRAMES     = 30;
-const INTRO_BALLOON_FRAMES  = 210;
-const INTRO_BALLOON_FADEIN  = 40;
-const INTRO_BALLOON_FADEOUT = 20;
 const TITLE_FADE_FRAMES     = 40;
 const STAGE_FLASH_FRAMES    = 160;
 const STAGE_FLASH_SLIDE     = 22;
@@ -90,13 +81,12 @@ window.addEventListener('resize', resize);
 
 // ── Asset loading ─────────────────────────────────────────
 function loadImg(src) { const img = new Image(); img.src = src; return img; }
-let fanArtImg = CUSTOM.fanArtSrc ? loadImg(CUSTOM.fanArtSrc) : null;
-const bouncerSrcs = CUSTOM.bouncerSrc
-    ? (Array.isArray(CUSTOM.bouncerSrc) ? CUSTOM.bouncerSrc : [CUSTOM.bouncerSrc]) : [];
+const bouncerSrcs = CONFIG.assets.bouncerSrc
+    ? (Array.isArray(CONFIG.assets.bouncerSrc) ? CONFIG.assets.bouncerSrc : [CONFIG.assets.bouncerSrc]) : [];
 const bouncerImgs = bouncerSrcs.map(s => loadImg(s));
-let titleImg        = CUSTOM.titleImgSrc        ? loadImg(CUSTOM.titleImgSrc)        : null;
-let titleImgCleared = CUSTOM.titleImgClearedSrc ? loadImg(CUSTOM.titleImgClearedSrc) : null;
-let reticleImg      = CUSTOM.reticleSrc         ? loadImg(CUSTOM.reticleSrc)         : null;
+let titleImg        = CONFIG.assets.titleImgSrc        ? loadImg(CONFIG.assets.titleImgSrc)        : null;
+let titleImgCleared = CONFIG.assets.titleImgClearedSrc ? loadImg(CONFIG.assets.titleImgClearedSrc) : null;
+let reticleImg      = CONFIG.assets.reticleSrc         ? loadImg(CONFIG.assets.reticleSrc)         : null;
 
 const CLEARED_KEY = 'sky-burst-42-cleared';
 let gameCleared = sessionStorage.getItem(CLEARED_KEY) === '1';
@@ -105,9 +95,9 @@ function resetCleared() { gameCleared = false; sessionStorage.removeItem(CLEARED
 
 let introVideo = null;
 let introVideoEnded = false;
-if (CUSTOM.introVideoSrc) {
+if (CONFIG.assets.introVideoSrc) {
     introVideo = document.createElement('video');
-    introVideo.src = CUSTOM.introVideoSrc;
+    introVideo.src = CONFIG.assets.introVideoSrc;
     introVideo.muted = true;
     introVideo.playsInline = true;
     introVideo.preload = 'auto';
@@ -148,7 +138,7 @@ function initState() {
         bgT: 1,
         bgFrom: { bg1: STAGES[0].bg1, bg2: STAGES[0].bg2 },
         stageFlash: 0, stageFlashMsg: 0,
-        introAlpha: 0, titleFade: 0,
+        titleFade: 0,
         slowTimer: 0,
         bouncers: [
             { x: 0, y: 0, vx:  1.5, vy: -1.8, size: 86 },
@@ -167,7 +157,7 @@ function buildPool(si) {
     const bw = STAGES[si].bombW;
     const pool = [];
     Object.entries(DEFS).forEach(([k, d]) => {
-        const wt = d.hazard ? bw : d.w;
+        const wt = d.hazard ? bw : d.slow && STAGES[si].clockW != null ? STAGES[si].clockW : d.w;
         for (let i = 0; i < wt; i++) pool.push(k);
     });
     return pool;
@@ -366,7 +356,7 @@ function drawBalloon(it) {
         ctx.strokeStyle = 'rgba(255,255,255,0.22)';
         ctx.lineWidth = 1.5;
         ctx.moveTo(it.x, it.y + R);
-        ctx.lineTo(it.x, it.y + R + 14);
+        ctx.lineTo(it.x, it.y + R + 32);
         ctx.stroke();
     }
     const bg = ctx.createRadialGradient(it.x - R*0.28, it.y - R*0.28, 2, it.x, it.y, R);
@@ -544,10 +534,10 @@ function drawLoading() {
     ctx.font = `600 28px ${UI.fontDisp}`;
     ctx.fillStyle = UI.ink0;
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText('Sky', W/2 - 38, H*0.45);
+    ctx.fillText(CONFIG.loading.title1, W/2 - 38, H*0.45);
     ctx.font = `500 italic 28px ${UI.fontDisp}`;
     ctx.fillStyle = UI.accent;
-    ctx.fillText('Burst.', W/2 + 28, H*0.45);
+    ctx.fillText(CONFIG.loading.title2, W/2 + 28, H*0.45);
     // progress bar
     const bx = W*0.2, by = H*0.55, bw = W*0.6;
     ctx.strokeStyle = UI.line; ctx.strokeRect(bx + 0.5, by + 0.5, bw, 2);
@@ -576,62 +566,14 @@ function drawVideoFit(video) {
 }
 
 // ── Intro ─────────────────────────────────────────────────
-const INTRO_BALLOONS = Array.from({length: 12}, (_, i) => ({
-    x: 0.08 + (i % 6) * 0.17,
-    delay: i * 9,
-    emoji: ['🎈','🎈','🎁','💕','🎈','🕶️'][i % 6],
-    size: 28 + (i % 3) * 10,
-}));
 function drawIntro() {
-    const f = G.frame;
     if (G.introSub === 'video') { drawVideoFit(introVideo); return; }
     if (G.introSub === 'fade') {
         const t = Math.min(G.introFade / INTRO_FADE_FRAMES, 1);
         drawVideoFit(introVideo);
         ctx.fillStyle = `rgba(5,7,20,${t})`;
         ctx.fillRect(0, 0, W, H);
-        return;
     }
-    const alpha = f < INTRO_BALLOON_FADEIN ? f / INTRO_BALLOON_FADEIN
-                : f > INTRO_BALLOON_FRAMES - INTRO_BALLOON_FADEOUT
-                    ? Math.max(0, (INTRO_BALLOON_FRAMES - f) / INTRO_BALLOON_FADEOUT)
-                    : 1;
-    ctx.fillStyle = UI.bg0; ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = alpha;
-
-    // rising emoji items
-    INTRO_BALLOONS.forEach(b => {
-        const prog = Math.max(0, Math.min(1, (f - b.delay) / 80));
-        if (prog <= 0) return;
-        const y = H + b.size - (H + b.size*2) * prog;
-        const wob = Math.sin((f - b.delay) * 0.06) * 8;
-        ctx.font = `${b.size}px serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(b.emoji, b.x*W + wob, y);
-    });
-
-    if (f > 30) {
-        const ta = Math.min(1, (f - 30)/30);
-        ctx.globalAlpha = alpha * ta;
-
-        // Title — same language as title screen
-        ctx.font = `500 11px ${UI.fontMono}`;
-        ctx.fillStyle = UI.accent;
-        ctx.textAlign = 'center';
-        ctx.fillText('[ A FAN GAME · HBD 42 ]', W/2, H*0.36);
-
-        ctx.font = `600 56px ${UI.fontDisp}`;
-        ctx.fillStyle = UI.ink0;
-        ctx.fillText('Sky', W/2 - 50, H*0.46);
-        ctx.font = `500 italic 56px ${UI.fontDisp}`;
-        ctx.fillStyle = UI.accent;
-        ctx.fillText('Burst.', W/2 + 40, H*0.46);
-
-        ctx.font = `500 14px ${UI.fontJa}`;
-        ctx.fillStyle = UI.ink1;
-        ctx.fillText(CONFIG.intro.line2 || '', W/2, H*0.55);
-    }
-    ctx.globalAlpha = 1;
 }
 
 // ── Title ─────────────────────────────────────────────────
@@ -743,7 +685,7 @@ function drawTitle() {
     // Rules block — with dim plate behind for legibility over mascot
     const rules = CONFIG.title.instructions;
     const lineH = 30;
-    const rTop = H * 0.36;
+    const rTop = H * 0.40;
     const rH = lineH * rules.length + 36;
 
     ctx.save();
@@ -1028,9 +970,9 @@ function drawEnding() {
             ctx.rect(b.x - r, b.y - r, b.size, b.size);
             ctx.clip();
             ctx.drawImage(img, b.x - r, b.y - r, b.size, b.size);
-            ctx.strokeStyle = UI.accent;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(b.x - r + 0.5, b.y - r + 0.5, b.size - 1, b.size - 1);
+            //ctx.strokeStyle = UI.accent;
+            //ctx.lineWidth = 1;
+            //ctx.strokeRect(b.x - r + 0.5, b.y - r + 0.5, b.size - 1, b.size - 1);
         }
         ctx.restore();
     });
