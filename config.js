@@ -4,7 +4,7 @@
 
 const CONFIG = {
 
-    version: '1.31',
+    version: '1.32',
 
     // ── 画像・動画ファイル ──────────────────────────────────
     assets: {
@@ -57,8 +57,9 @@ const CONFIG = {
         // STATUS 判定（逃した風船数の閾値）
         status: [
             { max: 0,  label: 'PERFECT' },
-            { max: 20,  label: 'EXCELLENT' },
-            { max: 40, label: 'GREAT' },
+            { max: 5,  label: 'FABULOUS' },
+            { max: 10, label: 'EXCELLENT' },
+            { max: 20, label: 'GREAT' },
             { max: Infinity, label: 'GOOD' },
         ],
     },
