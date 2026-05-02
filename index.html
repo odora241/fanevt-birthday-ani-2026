@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
     <title>SKY BURST · 42</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,7 +70,7 @@ const STAGE_FLASH_SLIDE     = 22;
 const START_WAIT_FRAMES     = 60;
 const START_SLIDE_FRAMES    = 15;
 const START_TOTAL_FRAMES    = 210;
-const SLOW_FRAMES           = 210;
+const SLOW_FRAMES           = 120;
 const RETICLE_SIZE          = 80;
 
 // ── Canvas setup ──────────────────────────────────────────
@@ -161,6 +162,7 @@ function initState() {
         bgFrom: { bg1: STAGES[0].bg1, bg2: STAGES[0].bg2 },
         stageFlash: 0, stageFlashMsg: 0,
         titleFade: 0,
+        missed: 0,
         slowTimer: 0,
         endingInputDelay: 0,
         endingChickenPopup: false,
@@ -1207,8 +1209,9 @@ function drawEnding() {
     ctx.font = `600 22px ${UI.fontDisp}`;
     ctx.fillStyle = UI.ink0;
     ctx.fillText(`${STAGES.length}/${STAGES.length}`, padX, sy + 28);
-    ctx.fillStyle = UI.accent;
-    ctx.fillText('PERFECT', W/2, sy + 28);
+    const statusEntry = CONFIG.ending.status.find(s => G.missed <= s.max) || CONFIG.ending.status[CONFIG.ending.status.length - 1];
+    ctx.fillStyle = G.missed === 0 ? UI.accent : UI.ink0;
+    ctx.fillText(statusEntry.label, W/2, sy + 28);
     hairline(padX, sy + 48, W - padX, sy + 48);
 
     // Replay btn
@@ -1344,7 +1347,11 @@ function update() {
             it.y += it.vy; it.x += it.vx;
             it.wobble += 0.025;
             it.x += Math.sin(it.wobble) * 0.35;
-            return it.y > -R*3;
+            if (it.y <= -R*3) {
+                if (!it.def.hazard) G.missed++;
+                return false;
+            }
+            return true;
         });
         if (G.combo > 1 && Date.now() - G.lastPop > COMBO_MS) G.combo = 1;
         if (G.bgT < 1) G.bgT = Math.min(G.bgT + 0.018, 1);

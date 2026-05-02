@@ -54,6 +54,13 @@ const CONFIG = {
         message: '兄者はFABULOUSな42歳をむかえた！',
         chickenMessage: 'Thx 4 playing!\n兄者さんに幸あれ～！(強火)',
         chickenAuthor: '— from @Niro_pk',
+        // STATUS 判定（逃した風船数の閾値）
+        status: [
+            { max: 0,  label: 'PERFECT' },
+            { max: 20,  label: 'EXCELLENT' },
+            { max: 40, label: 'GREAT' },
+            { max: Infinity, label: 'GOOD' },
+        ],
     },
 
     // ── アイテム定義 ────────────────────────────────────────
