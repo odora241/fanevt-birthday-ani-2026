@@ -98,6 +98,7 @@ let titleImg        = CONFIG.assets.titleImgSrc        ? loadImg(CONFIG.assets.t
 let titleImgCleared = CONFIG.assets.titleImgClearedSrc ? loadImg(CONFIG.assets.titleImgClearedSrc) : null;
 let reticleImg      = CONFIG.assets.reticleSrc         ? loadImg(CONFIG.assets.reticleSrc)         : null;
 const howtoImg      = loadImg('./assets/howto-img.png');
+const chickenImg    = CONFIG.assets.chickenImgSrc ? loadImg(CONFIG.assets.chickenImgSrc) : null;
 const itemImgs = {};
 Object.entries(CONFIG.items).forEach(([k, d]) => {
     if (d.img) itemImgs[k] = loadImg(`./assets/items/${d.img}`);
@@ -773,7 +774,7 @@ function drawTitle() {
     ctx.fillText('FPS · BALLOON BUSTER', padX, hSub);
     ctx.textAlign = 'right';
     ctx.fillStyle = UI.ink2;
-    ctx.fillText('v1.0', W - padX, hSub);
+    ctx.fillText(`v${CONFIG.version}`, W - padX, hSub);
     hairline(padX, hLine2, W - padX, hLine2);
 
     // Rules block — with dim plate behind for legibility over mascot
@@ -853,6 +854,16 @@ function drawTitle() {
     ctx.fillText('FOR THE BIRTHDAY BOY · 42', W/2, H - 22);
     ctx.textAlign = 'right';
     ctx.fillText('BEST · 128', W - padX, H - 22);
+
+    // reset button (small, bottom-right)
+    if (gameCleared) {
+        ctx.font = `500 9px ${UI.fontMono}`;
+        ctx.fillStyle = UI.ink3;
+        ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+        ctx.fillText('RESET', W - padX, H - 6);
+        const rw = ctx.measureText('RESET').width;
+        G._resetBtn = { x: W - padX - rw/2, y: H - 10, w: rw + 12, h: 18 };
+    }
 
     // intro fade overlay
     if (G.titleFade < TITLE_FADE_FRAMES) {
@@ -1052,8 +1063,11 @@ function drawGameOver() {
 
     ctx.strokeStyle = UI.line2;
     ctx.strokeRect(goChBtnX - iconSz/2 + 0.5, iconY - iconSz/2 + 0.5, iconSz - 1, iconSz - 1);
-    ctx.font = `26px serif`;
-    ctx.fillText('🐔', goChBtnX, iconY + 2);
+    if (chickenImg && chickenImg.complete && chickenImg.naturalWidth > 0) {
+        ctx.drawImage(chickenImg, goChBtnX - iconSz/2 + 4, iconY - iconSz/2 + 4, iconSz - 8, iconSz - 8);
+    } else {
+        ctx.font = `26px serif`; ctx.fillText('🐔', goChBtnX, iconY + 2);
+    }
 
     // Chicken popup
     if (G.goChickenPopup) {
@@ -1233,8 +1247,11 @@ function drawEnding() {
 
     ctx.strokeStyle = UI.line2;
     ctx.strokeRect(chBtnX - iconSz/2 + 0.5, iconY - iconSz/2 + 0.5, iconSz - 1, iconSz - 1);
-    ctx.font = `26px serif`;
-    ctx.fillText('🐔', chBtnX, iconY + 2);
+    if (chickenImg && chickenImg.complete && chickenImg.naturalWidth > 0) {
+        ctx.drawImage(chickenImg, chBtnX - iconSz/2 + 4, iconY - iconSz/2 + 4, iconSz - 8, iconSz - 8);
+    } else {
+        ctx.font = `26px serif`; ctx.fillText('🐔', chBtnX, iconY + 2);
+    }
 
     ctx.globalAlpha = 1;
 
@@ -1402,6 +1419,8 @@ function onInput(e) {
                 G.phase = 'howto'; G.frame = 0;
             } else if (gameCleared && G._clearedToggle && inRect(x, y, G._clearedToggle.x, G._clearedToggle.y, G._clearedToggle.w, G._clearedToggle.h)) {
                 titleImgAlt = !titleImgAlt;
+            } else if (gameCleared && G._resetBtn && inRect(x, y, G._resetBtn.x, G._resetBtn.y, G._resetBtn.w, G._resetBtn.h)) {
+                resetCleared(); titleImgAlt = false;
             }
             break;
         case 'howto':

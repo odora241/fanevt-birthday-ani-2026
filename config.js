@@ -4,11 +4,14 @@
 
 const CONFIG = {
 
+    version: '1.30',
+
     // ── 画像・動画ファイル ──────────────────────────────────
     assets: {
         reticleSrc:         './assets/reticle.png',
         titleImgSrc:        './assets/mv-oto.png',
-        // titleImgClearedSrc: './assets/mv-oto-clear.png',
+        titleImgClearedSrc: './assets/mv-ani.png',
+        chickenImgSrc:      './assets/niwa.png',
         introVideoSrc: './assets/intro.mp4',
         bouncerSrc: [
             './assets/bouncer01.png',
@@ -18,7 +21,7 @@ const CONFIG = {
 
     // ── ローディング画面 ────────────────────────────────────
     loading: {
-        title1: '2BRO',
+        title1: '2BRO.',
         title2: 'Fangame',
         text:   'Loading',
     },
