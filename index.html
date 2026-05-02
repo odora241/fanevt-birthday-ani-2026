@@ -154,6 +154,8 @@ function initState() {
         stageFlash: 0, stageFlashMsg: 0,
         titleFade: 0,
         slowTimer: 0,
+        endingInputDelay: 0,
+        endingChickenPopup: false,
         bouncers: [
             { x: 0, y: 0, vx:  1.5, vy: -1.8, size: 86 },
             { x: 0, y: 0, vx: -1.2, vy: -1.6, size: 86 },
@@ -253,7 +255,7 @@ function onPop(it) {
         if (G.stagePts >= STAGES[G.si].target) {
             if (G.si >= STAGES.length - 1) {
                 setCleared();
-                setTimeout(() => { spawnConfetti(); G.phase = 'ending'; }, 350);
+                setTimeout(() => { spawnConfetti(); G.phase = 'ending'; G.endingInputDelay = 90; }, 350);
             } else {
                 G.bgFrom = { bg1: STAGES[G.si].bg1, bg2: STAGES[G.si].bg2 };
                 G.bgT = 0; G.si++;
@@ -407,6 +409,40 @@ function drawBalloon(it) {
     ctx.restore();
 }
 
+// ── Callout bubble (shared by Starting + Stage-flash) ────
+function drawCallout(cx, cy, bw, bh, label, msg, msgSize) {
+    const bbx = cx - bw/2, bby = cy - bh/2;
+    // box
+    ctx.fillStyle = UI.bg1;
+    ctx.fillRect(bbx, bby, bw, bh);
+    ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
+    ctx.strokeRect(bbx + 0.5, bby + 0.5, bw - 1, bh - 1);
+    // label
+    ctx.font = `500 10px ${UI.fontMono}`;
+    ctx.fillStyle = UI.accent;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(label, bbx + 12, bby + 10);
+    // message
+    ctx.font = `500 ${msgSize}px ${UI.fontJa}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(msg, bbx + 12, bby + bh - 14);
+    // line tail: vertical then diagonal, dot at end
+    const tx = bbx + 16, ty = bby + bh;
+    ctx.strokeStyle = UI.accent; ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx, ty + 10);
+    ctx.lineTo(tx + 14, ty + 24);
+    ctx.stroke();
+    ctx.fillStyle = UI.accent;
+    ctx.beginPath();
+    ctx.arc(tx + 14, ty + 24, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineCap = 'butt';
+}
+
 // ── HUD ───────────────────────────────────────────────────
 const PAUSE_BTN = { size: 40 };
 
@@ -493,21 +529,7 @@ function drawHUD() {
         ctx.save();
         ctx.globalAlpha = alpha;
 
-        // accent border
-        ctx.fillStyle = UI.bg1;
-        ctx.fillRect(cx - bw2/2, cy - bh2/2, bw2, bh2);
-        ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
-        ctx.strokeRect(cx - bw2/2 + 0.5, cy - bh2/2 + 0.5, bw2 - 1, bh2 - 1);
-
-        ctx.font = `500 10px ${UI.fontMono}`;
-        ctx.fillStyle = UI.accent;
-        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.fillText(`STAGE ${G.si+1}  //  SPEED UP`, cx - bw2/2 + 12, cy - bh2/2 + 10);
-
-        ctx.font = `500 16px ${UI.fontJa}`;
-        ctx.fillStyle = UI.ink0;
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText(msg, cx - bw2/2 + 12, cy + bh2/2 - 14);
+        drawCallout(cx, cy, bw2, bh2, `STAGE ${G.si+1}  //  SPEED UP`, msg, 16);
         ctx.restore();
     }
 
@@ -586,7 +608,8 @@ function drawLoading() {
     const dots = '.'.repeat((Math.floor(G.frame/12) % 4));
     ctx.font = `500 11px ${UI.fontMono}`;
     ctx.fillStyle = UI.ink2;
-    ctx.fillText(`${CONFIG.loading.text}${dots}`, W/2, H*0.62);
+    ctx.textAlign = 'left';
+    ctx.fillText(`${CONFIG.loading.text}${dots}`, bx, H*0.62);
 }
 
 // ── Video fit ─────────────────────────────────────────────
@@ -836,23 +859,11 @@ function drawStarting() {
     const slideF = START_SLIDE_FRAMES;
     const slideY = elapsed < slideF ? (1 - elapsed / slideF) * 60 : 0;
     const alpha  = elapsed < slideF ? elapsed / slideF : 1;
-    const msg = 'いっくよー！';
-    const bw = Math.min(W - 32, 280), bh = 72;
+    const bw = Math.min(W - 32, 300), bh = 72;
     const cx = W/2, cy = H*0.55 + slideY;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = UI.bg1;
-    ctx.fillRect(cx - bw/2, cy - bh/2, bw, bh);
-    ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
-    ctx.strokeRect(cx - bw/2 + 0.5, cy - bh/2 + 0.5, bw - 1, bh - 1);
-    ctx.font = `500 10px ${UI.fontMono}`;
-    ctx.fillStyle = UI.accent;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText('STAGE 1  //  GO', cx - bw/2 + 12, cy - bh/2 + 10);
-    ctx.font = `500 18px ${UI.fontJa}`;
-    ctx.fillStyle = UI.ink0;
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(msg, cx - bw/2 + 12, cy + bh/2 - 14);
+    drawCallout(cx, cy, bw, bh, 'STAGE 1  //  GO', 'いっくよー！', 18);
     ctx.restore();
 }
 
@@ -1088,7 +1099,7 @@ function drawEnding() {
 
     // Replay btn
     const bw = W - padX*2, bh = 56;
-    const by = H - 150;
+    const by = H - 170;
     G._replayY = by + bh/2;
     ctx.save();
     ctx.shadowColor = hexA(UI.accent, 0.5);
@@ -1100,6 +1111,68 @@ function drawEnding() {
     ctx.fillStyle = UI.bg0;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('PLAY AGAIN', W/2, by + bh/2);
+
+    // Icon button row: X share + chicken
+    const iconSz = 52, iconGap = 12;
+    const iconY = by + bh + 20 + iconSz / 2;
+    const xBtnX = W/2 - (iconSz + iconGap) / 2;
+    const chBtnX = W/2 + (iconSz + iconGap) / 2;
+    G._xBtnX = xBtnX; G._xBtnY = iconY;
+    G._chBtnX = chBtnX; G._chBtnY = iconY;
+    G._iconSz = iconSz;
+
+    const locked = G.endingInputDelay > 0;
+    ctx.globalAlpha = locked ? 0.35 : 1;
+
+    ctx.strokeStyle = UI.line2; ctx.lineWidth = 1;
+    ctx.strokeRect(xBtnX - iconSz/2 + 0.5, iconY - iconSz/2 + 0.5, iconSz - 1, iconSz - 1);
+    ctx.font = `600 22px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink1;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('𝕏', xBtnX, iconY);
+
+    ctx.strokeStyle = UI.line2;
+    ctx.strokeRect(chBtnX - iconSz/2 + 0.5, iconY - iconSz/2 + 0.5, iconSz - 1, iconSz - 1);
+    ctx.font = `26px serif`;
+    ctx.fillText('🐔', chBtnX, iconY + 2);
+
+    ctx.globalAlpha = 1;
+
+    // Chicken popup (box callout + vertical line tail to chicken icon)
+    if (G.endingChickenPopup) {
+        const lines = (CONFIG.ending.chickenMessage || '').split('\n');
+        const lineH = 22;
+        const popW = Math.min(W - padX * 2, 300);
+        const popH = lines.length * lineH + 28;
+        const popX = W/2 - popW/2;
+        const popY = iconY - iconSz/2 - 16 - popH;
+        // box
+        ctx.fillStyle = UI.bg1;
+        ctx.fillRect(popX, popY, popW, popH);
+        ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
+        ctx.strokeRect(popX + 0.5, popY + 0.5, popW - 1, popH - 1);
+        // text
+        ctx.font = `400 13px ${UI.fontJa}`;
+        ctx.fillStyle = UI.ink0;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        lines.forEach((line, i) => {
+            ctx.fillText(line, W/2, popY + (popH - lines.length * lineH) / 2 + (i + 0.5) * lineH);
+        });
+        // vertical line tail pointing down to chicken icon top
+        const tailX = chBtnX;
+        const tailY0 = popY + popH;
+        const tailY1 = iconY - iconSz / 2 - 2;
+        ctx.strokeStyle = UI.accent; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY0);
+        ctx.lineTo(tailX, tailY1);
+        ctx.stroke();
+        ctx.fillStyle = UI.accent;
+        ctx.beginPath();
+        ctx.arc(tailX, tailY1, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineCap = 'butt';
+    }
 }
 
 // ── Update ────────────────────────────────────────────────
@@ -1154,6 +1227,7 @@ function update() {
         if (G.slowTimer > 0) G.slowTimer--;
     }
     if (G.phase === 'ending') {
+        if (G.endingInputDelay > 0) G.endingInputDelay--;
         G.confetti.forEach(c => {
             c.x += c.vx; c.y += c.vy; c.rot += c.rotV;
             if (c.y > H + 20) { c.y = -10; c.x = Math.random()*W; }
@@ -1234,7 +1308,16 @@ function onInput(e) {
             if (inRect(x, y, W/2, G._retryY ?? H*0.85, W - 40, 52)) replayState();
             break;
         case 'ending':
-            if (inRect(x, y, W/2, G._replayY ?? H*0.85, W - 40, 56)) replayState();
+            if (G.endingInputDelay > 0) return;
+            if (G.endingChickenPopup) { G.endingChickenPopup = false; return; }
+            if (inRect(x, y, W/2, G._replayY ?? H*0.85, W - 40, 56)) {
+                replayState();
+            } else if (inRect(x, y, G._xBtnX ?? W/2 - 32, G._xBtnY ?? H*0.9, G._iconSz ?? 52, G._iconSz ?? 52)) {
+                const txt = `SKY BURST · 42 をクリア！🎈 スコア: ${G.score} #SKYBURST42`;
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}`, '_blank');
+            } else if (inRect(x, y, G._chBtnX ?? W/2 + 32, G._chBtnY ?? H*0.9, G._iconSz ?? 52, G._iconSz ?? 52)) {
+                G.endingChickenPopup = true;
+            }
             break;
     }
 }
@@ -1246,7 +1329,7 @@ window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'e') {
         G.score = 6000; G.si = STAGES.length - 1; G.stagePts = STAGES[G.si].target;
-        spawnConfetti(); setCleared(); G.phase = 'ending'; G.frame = 0;
+        spawnConfetti(); setCleared(); G.phase = 'ending'; G.frame = 0; G.endingInputDelay = 90;
     } else if (k === 'o') {
         G.score = 1234; G.lives = 0; G.phase = 'gameOver';
     } else if (k === 't') {
