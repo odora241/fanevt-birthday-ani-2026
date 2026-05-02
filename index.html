@@ -97,6 +97,7 @@ const bouncerImgs = bouncerSrcs.map(s => loadImg(s));
 let titleImg        = CONFIG.assets.titleImgSrc        ? loadImg(CONFIG.assets.titleImgSrc)        : null;
 let titleImgCleared = CONFIG.assets.titleImgClearedSrc ? loadImg(CONFIG.assets.titleImgClearedSrc) : null;
 let reticleImg      = CONFIG.assets.reticleSrc         ? loadImg(CONFIG.assets.reticleSrc)         : null;
+const howtoImg      = loadImg('./assets/howto-img.png');
 const itemImgs = {};
 Object.entries(CONFIG.items).forEach(([k, d]) => {
     if (d.img) itemImgs[k] = loadImg(`./assets/items/${d.img}`);
@@ -106,9 +107,11 @@ const CLEARED_KEY = 'sky-burst-42-cleared';
 let gameCleared = sessionStorage.getItem(CLEARED_KEY) === '1';
 function setCleared() { gameCleared = true;  sessionStorage.setItem(CLEARED_KEY, '1'); }
 function resetCleared() { gameCleared = false; sessionStorage.removeItem(CLEARED_KEY); }
+let titleImgAlt = false;
 
 let introVideo = null;
 let introVideoEnded = false;
+let introVideoReady = false;
 if (CONFIG.assets.introVideoSrc) {
     introVideo = document.createElement('video');
     introVideo.src = CONFIG.assets.introVideoSrc;
@@ -118,7 +121,11 @@ if (CONFIG.assets.introVideoSrc) {
     introVideo.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:1px;height:1px';
     document.body.appendChild(introVideo);
     introVideo.addEventListener('ended', () => { introVideoEnded = true; });
-    introVideo.addEventListener('error', () => { introVideoEnded = true; });
+    introVideo.addEventListener('canplay', () => { introVideoReady = true; });
+    introVideo.addEventListener('canplaythrough', () => { introVideoReady = true; });
+    introVideo.addEventListener('error', () => { introVideoEnded = true; introVideoReady = true; });
+} else {
+    introVideoReady = true;
 }
 
 // reticle tint cache
@@ -156,6 +163,7 @@ function initState() {
         slowTimer: 0,
         endingInputDelay: 0,
         endingChickenPopup: false,
+        goChickenPopup: false,
         bouncers: [
             { x: 0, y: 0, vx:  1.5, vy: -1.8, size: 86 },
             { x: 0, y: 0, vx: -1.2, vy: -1.6, size: 86 },
@@ -590,14 +598,28 @@ function drawReticle(targetLock = false) {
 function drawLoading() {
     ctx.fillStyle = UI.bg0;
     ctx.fillRect(0, 0, W, H);
-    // brand
-    ctx.font = `600 28px ${UI.fontDisp}`;
+    // brand — auto-sizing to fit any title length
+    const maxBrandW = W * 0.7, gap = 10;
+    let brandSz = 28;
+    ctx.font = `600 ${brandSz}px ${UI.fontDisp}`;
+    let w1 = ctx.measureText(CONFIG.loading.title1).width;
+    ctx.font = `500 italic ${brandSz}px ${UI.fontDisp}`;
+    let w2 = ctx.measureText(CONFIG.loading.title2).width;
+    while (w1 + w2 + gap > maxBrandW && brandSz > 14) {
+        brandSz--;
+        ctx.font = `600 ${brandSz}px ${UI.fontDisp}`;
+        w1 = ctx.measureText(CONFIG.loading.title1).width;
+        ctx.font = `500 italic ${brandSz}px ${UI.fontDisp}`;
+        w2 = ctx.measureText(CONFIG.loading.title2).width;
+    }
+    const startX = (W - (w1 + w2 + gap)) / 2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `600 ${brandSz}px ${UI.fontDisp}`;
     ctx.fillStyle = UI.ink0;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText(CONFIG.loading.title1, W/2 - 38, H*0.45);
-    ctx.font = `500 italic 28px ${UI.fontDisp}`;
+    ctx.fillText(CONFIG.loading.title1, startX, H * 0.45);
+    ctx.font = `500 italic ${brandSz}px ${UI.fontDisp}`;
     ctx.fillStyle = UI.accent;
-    ctx.fillText(CONFIG.loading.title2, W/2 + 28, H*0.45);
+    ctx.fillText(CONFIG.loading.title2, startX + w1 + gap, H * 0.45);
     // progress bar
     const bx = W*0.2, by = H*0.55, bw = W*0.6;
     ctx.strokeStyle = UI.line; ctx.strokeRect(bx + 0.5, by + 0.5, bw, 2);
@@ -639,8 +661,8 @@ function drawIntro() {
 
 // ── Title ─────────────────────────────────────────────────
 function drawTitleImg() {
-    const img = (gameCleared && titleImgCleared?.complete && titleImgCleared.naturalWidth > 0)
-        ? titleImgCleared : titleImg;
+    const useClear = gameCleared && !titleImgAlt && titleImgCleared?.complete && titleImgCleared.naturalWidth > 0;
+    const img = useClear ? titleImgCleared : titleImg;
     if (!img || !img.complete || img.naturalWidth === 0) return;
     // larger, anchored bottom-center, fully opaque (mascot as the hero)
     const targetW = W * 1.0;
@@ -709,7 +731,12 @@ function drawTitle() {
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('SKY BURST', padX + 14, hTop);
     ctx.textAlign = 'right';
-    ctx.fillText(gameCleared ? 'CLEARED · v1.0' : 'v1.0', W - padX, hTop);
+    if (gameCleared) {
+        ctx.fillStyle = UI.accent;
+        ctx.fillText('CLEARED ↻', W - padX, hTop);
+        const tw = ctx.measureText('CLEARED ↻').width;
+        G._clearedToggle = { x: W - padX - tw/2, y: hTop, w: tw + 16, h: 28 };
+    }
 
     // Title block — eyebrow with pulsing dot
     const pulse = 0.5 + Math.sin(G.frame * 0.08) * 0.3;
@@ -744,15 +771,9 @@ function drawTitle() {
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
     ctx.fillText('FPS · BALLOON BUSTER', padX, hSub);
-    const tagW = 44, tagH = 20, tagX = W - padX - tagW, tagY = hSub - tagH;
-    ctx.strokeStyle = UI.line2; ctx.lineWidth = 1;
-    ctx.strokeRect(tagX + 0.5, tagY + 0.5, tagW - 1, tagH - 1);
-    ctx.font = `600 10px ${UI.fontMono}`;
-    ctx.fillStyle = UI.accent;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(':42', tagX + tagW/2, tagY + tagH/2 + 1);
-    ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = UI.ink2;
+    ctx.fillText('v1.0', W - padX, hSub);
     hairline(padX, hLine2, W - padX, hLine2);
 
     // Rules block — with dim plate behind for legibility over mascot
@@ -839,15 +860,33 @@ function drawTitle() {
         ctx.fillRect(0, 0, W, H);
     }
 
-    // reset btn for cleared state
-    if (gameCleared) {
-        ctx.globalAlpha = 0.4;
-        ctx.font = `500 14px ${UI.fontMono}`;
-        ctx.fillStyle = UI.ink1;
-        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-        ctx.fillText('↻', W - 16, H - 56);
-        ctx.globalAlpha = 1;
-    }
+}
+
+// ── How-to image overlay ──────────────────────────────────
+function drawHowto() {
+    ctx.fillStyle = UI.bg0;
+    ctx.fillRect(0, 0, W, H);
+    if (!howtoImg || !howtoImg.complete || howtoImg.naturalWidth === 0) return;
+    const pad = 32;
+    const maxW = W - pad * 2, maxH = H - pad * 2;
+    const scale = Math.min(maxW / howtoImg.naturalWidth, maxH / howtoImg.naturalHeight, 1);
+    const iw = howtoImg.naturalWidth * scale, ih = howtoImg.naturalHeight * scale;
+    const ix = (W - iw) / 2, iy = (H - ih) / 2;
+    // border
+    ctx.strokeStyle = UI.line2; ctx.lineWidth = 2;
+    ctx.strokeRect(ix - 1, iy - 1, iw + 2, ih + 2);
+    ctx.drawImage(howtoImg, ix, iy, iw, ih);
+    // × close button (top-right of image)
+    const btnSz = 44, btnX = ix + iw - btnSz / 2 + 8, btnY = iy - btnSz / 2 + 8;
+    ctx.fillStyle = UI.bg0;
+    ctx.fillRect(btnX - btnSz / 2, btnY - btnSz / 2, btnSz, btnSz);
+    ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
+    ctx.strokeRect(btnX - btnSz / 2 + 0.5, btnY - btnSz / 2 + 0.5, btnSz - 1, btnSz - 1);
+    ctx.font = `400 22px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink0;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('✕', btnX, btnY);
+    G._howtoClose = { x: btnX, y: btnY, w: btnSz, h: btnSz };
 }
 
 // ── Starting (countdown callout) ──────────────────────────
@@ -977,7 +1016,8 @@ function drawGameOver() {
     // message
     ctx.font = `400 12px ${UI.fontJa}`;
     ctx.fillStyle = UI.ink2;
-    ctx.fillText(CONFIG.gameOver.message, padX, H*0.55 + 82);
+    const goMsg = G.si >= 2 ? CONFIG.gameOver.messageStage3 : CONFIG.gameOver.message;
+    ctx.fillText(goMsg, padX, H*0.55 + 82);
 
     // retry btn
     const bw = W - padX*2, bh = 52;
@@ -993,6 +1033,66 @@ function drawGameOver() {
     ctx.fillStyle = UI.bg0;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('TRY AGAIN', W/2, by + bh/2);
+
+    // Icon button row: X share + chicken
+    const iconSz = 52, iconGap = 12;
+    const iconY = by + bh + 20 + iconSz / 2;
+    const goXBtnX = W/2 - (iconSz + iconGap) / 2;
+    const goChBtnX = W/2 + (iconSz + iconGap) / 2;
+    G._goXBtnX = goXBtnX; G._goXBtnY = iconY;
+    G._goChBtnX = goChBtnX; G._goChBtnY = iconY;
+    G._goIconSz = iconSz;
+
+    ctx.strokeStyle = UI.line2; ctx.lineWidth = 1;
+    ctx.strokeRect(goXBtnX - iconSz/2 + 0.5, iconY - iconSz/2 + 0.5, iconSz - 1, iconSz - 1);
+    ctx.font = `600 22px ${UI.fontDisp}`;
+    ctx.fillStyle = UI.ink1;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('𝕏', goXBtnX, iconY);
+
+    ctx.strokeStyle = UI.line2;
+    ctx.strokeRect(goChBtnX - iconSz/2 + 0.5, iconY - iconSz/2 + 0.5, iconSz - 1, iconSz - 1);
+    ctx.font = `26px serif`;
+    ctx.fillText('🐔', goChBtnX, iconY + 2);
+
+    // Chicken popup
+    if (G.goChickenPopup) {
+        const lines = (CONFIG.ending.chickenMessage || '').split('\n');
+        const lineH = 22;
+        const authorH = CONFIG.ending.chickenAuthor ? 18 : 0;
+        const popW = Math.min(W - padX * 2, 300);
+        const popH = lines.length * lineH + 28 + authorH;
+        const popX = W/2 - popW/2;
+        const popY = iconY - iconSz/2 - 16 - popH;
+        ctx.fillStyle = UI.bg1;
+        ctx.fillRect(popX, popY, popW, popH);
+        ctx.strokeStyle = UI.accent; ctx.lineWidth = 1;
+        ctx.strokeRect(popX + 0.5, popY + 0.5, popW - 1, popH - 1);
+        ctx.font = `400 13px ${UI.fontJa}`;
+        ctx.fillStyle = UI.ink0;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        lines.forEach((line, i) => {
+            ctx.fillText(line, W/2, popY + (popH - authorH - lines.length * lineH) / 2 + (i + 0.5) * lineH);
+        });
+        if (CONFIG.ending.chickenAuthor) {
+            ctx.font = `400 10px ${UI.fontMono}`;
+            ctx.fillStyle = UI.ink2;
+            ctx.fillText(CONFIG.ending.chickenAuthor, W/2, popY + popH - 10);
+        }
+        const tailX = goChBtnX;
+        const tailY0 = popY + popH;
+        const tailY1 = iconY - iconSz / 2 - 2;
+        ctx.strokeStyle = UI.accent; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY0);
+        ctx.lineTo(tailX, tailY1);
+        ctx.stroke();
+        ctx.fillStyle = UI.accent;
+        ctx.beginPath();
+        ctx.arc(tailX, tailY1, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineCap = 'butt';
+    }
 }
 
 // ── Ending ────────────────────────────────────────────────
@@ -1142,8 +1242,9 @@ function drawEnding() {
     if (G.endingChickenPopup) {
         const lines = (CONFIG.ending.chickenMessage || '').split('\n');
         const lineH = 22;
+        const authorH = CONFIG.ending.chickenAuthor ? 18 : 0;
         const popW = Math.min(W - padX * 2, 300);
-        const popH = lines.length * lineH + 28;
+        const popH = lines.length * lineH + 28 + authorH;
         const popX = W/2 - popW/2;
         const popY = iconY - iconSz/2 - 16 - popH;
         // box
@@ -1156,8 +1257,13 @@ function drawEnding() {
         ctx.fillStyle = UI.ink0;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         lines.forEach((line, i) => {
-            ctx.fillText(line, W/2, popY + (popH - lines.length * lineH) / 2 + (i + 0.5) * lineH);
+            ctx.fillText(line, W/2, popY + (popH - authorH - lines.length * lineH) / 2 + (i + 0.5) * lineH);
         });
+        if (CONFIG.ending.chickenAuthor) {
+            ctx.font = `400 10px ${UI.fontMono}`;
+            ctx.fillStyle = UI.ink2;
+            ctx.fillText(CONFIG.ending.chickenAuthor, W/2, popY + popH - 10);
+        }
         // vertical line tail pointing down to chicken icon top
         const tailX = chBtnX;
         const tailY0 = popY + popH;
@@ -1181,7 +1287,9 @@ function update() {
     G.frame++;
 
     if (G.phase === 'loading') {
-        if (G.frame >= LOADING_FRAMES) {
+        // wait for video ready, with a 10-second hard timeout
+        const videoOk = introVideoReady || G.frame >= LOADING_FRAMES + 600;
+        if (G.frame >= LOADING_FRAMES && videoOk) {
             G.phase = 'intro';
             G.introSub = introVideo ? 'video' : 'balloons';
             G.frame = 0;
@@ -1264,6 +1372,7 @@ function render() {
         case 'loading':  drawLoading();  break;
         case 'intro':    drawIntro();    break;
         case 'title':    drawTitle();    break;
+        case 'howto':    drawHowto();    break;
         case 'starting': drawStarting(); break;
         case 'playing':  drawGame();     break;
         case 'paused':   drawPaused();   break;
@@ -1290,9 +1399,14 @@ function onInput(e) {
     switch(G.phase) {
         case 'title':
             if (inRect(x, y, W/2, G._titleBtnY ?? H*0.85, G._titleBtnW ?? W-40, G._titleBtnH ?? 56)) {
+                G.phase = 'howto'; G.frame = 0;
+            } else if (gameCleared && G._clearedToggle && inRect(x, y, G._clearedToggle.x, G._clearedToggle.y, G._clearedToggle.w, G._clearedToggle.h)) {
+                titleImgAlt = !titleImgAlt;
+            }
+            break;
+        case 'howto':
+            if (G._howtoClose && inRect(x, y, G._howtoClose.x, G._howtoClose.y, G._howtoClose.w, G._howtoClose.h)) {
                 G.phase = 'starting'; G.frame = 0;
-            } else if (gameCleared && inRect(x, y, W - 16, H - 56, 36, 36)) {
-                resetCleared();
             }
             break;
         case 'playing':
@@ -1305,7 +1419,15 @@ function onInput(e) {
             else if (inRect(x, y, W/2, G._pauseQuitY ?? H*0.65, W - 40, 52)) replayState();
             break;
         case 'gameOver':
-            if (inRect(x, y, W/2, G._retryY ?? H*0.85, W - 40, 52)) replayState();
+            if (G.goChickenPopup) { G.goChickenPopup = false; return; }
+            if (inRect(x, y, W/2, G._retryY ?? H*0.85, W - 40, 52)) {
+                replayState();
+            } else if (inRect(x, y, G._goXBtnX ?? W/2 - 32, G._goXBtnY ?? H*0.9, G._goIconSz ?? 52, G._goIconSz ?? 52)) {
+                const txt = `SKY BURST · 42 スコア: ${G.score} #SKYBURST42`;
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}`, '_blank');
+            } else if (inRect(x, y, G._goChBtnX ?? W/2 + 32, G._goChBtnY ?? H*0.9, G._goIconSz ?? 52, G._goIconSz ?? 52)) {
+                G.goChickenPopup = true;
+            }
             break;
         case 'ending':
             if (G.endingInputDelay > 0) return;
@@ -1314,7 +1436,14 @@ function onInput(e) {
                 replayState();
             } else if (inRect(x, y, G._xBtnX ?? W/2 - 32, G._xBtnY ?? H*0.9, G._iconSz ?? 52, G._iconSz ?? 52)) {
                 const txt = `SKY BURST · 42 をクリア！🎈 スコア: ${G.score} #SKYBURST42`;
-                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}`, '_blank');
+                canvas.toBlob(blob => {
+                    const file = new File([blob], 'skyburst42.png', { type: 'image/png' });
+                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                        navigator.share({ files: [file], title: 'SKY BURST · 42', text: txt }).catch(() => {});
+                    } else {
+                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}`, '_blank');
+                    }
+                }, 'image/png');
             } else if (inRect(x, y, G._chBtnX ?? W/2 + 32, G._chBtnY ?? H*0.9, G._iconSz ?? 52, G._iconSz ?? 52)) {
                 G.endingChickenPopup = true;
             }
