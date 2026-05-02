@@ -1397,7 +1397,17 @@ function render() {
         case 'ending':   drawEnding();   break;
     }
 }
-function loop() { update(); render(); requestAnimationFrame(loop); }
+const TICK_MS = 1000 / 60;
+let _lastTime = 0, _accum = 0;
+function loop(now) {
+    if (_lastTime) {
+        _accum += Math.min(now - _lastTime, 200);
+        while (_accum >= TICK_MS) { update(); _accum -= TICK_MS; }
+    }
+    _lastTime = now;
+    render();
+    requestAnimationFrame(loop);
+}
 
 // ── Input ─────────────────────────────────────────────────
 function getXY(e) {
@@ -1502,7 +1512,7 @@ canvas.addEventListener('mouseleave', () => { cursorX = -999; cursorY = -999; })
 
 function replayState() { initState(); G.phase = 'title'; G.frame = 0; }
 initState();
-loop();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 
 const CONFIG = {
 
-    version: '1.30',
+    version: '1.31',
 
     // ── 画像・動画ファイル ──────────────────────────────────
     assets: {
@@ -21,7 +21,7 @@ const CONFIG = {
 
     // ── ローディング画面 ────────────────────────────────────
     loading: {
-        title1: '2BRO.',
+        title1: '🕶🚩',
         title2: 'Fangame',
         text:   'Loading',
     },
@@ -64,7 +64,7 @@ const CONFIG = {
         car:        { label:'🚗', pts:25, w:16, color:'#c084fc', bg:'#7c3aed', img:'bl-purple.png' },
         heart:      { label:'💕', pts:30, w:12, color:'#ff80ab', bg:'#cc3370', img:'bl-pink.png' },
         sunglasses: { label:'🕶️', pts:42, w:7,  color:'#60a5fa', bg:'#1d6ed8', special:true, img:'bl-blue.png' },
-        clock:      { label:'⏰', pts:20, w:6, color:'#6EE7B7', bg:'#059669', slow:true,    img:'bl-green.png' },
+        clock:      { label:'⏰', pts:20, w:5, color:'#6EE7B7', bg:'#059669', slow:true,    img:'bl-green.png' },
         skull:      { label:'💀', pts:0,  w:0,  color:'#555555', bg:'#111111', hazard:true,  img:'bl-black.png' },
     },
 
