@@ -53,20 +53,20 @@ const CONFIG = {
     // ── アイテム定義 ────────────────────────────────────────
     // pts: 得点  w: 出現重み（大きいほど多く出る）
     items: {
-        balloon: { label:'🎈', pts:10, w:40, color:'#adc2f0', bg:'#497fc5' },
-        pizza:   { label:'🍕', pts:15, w:20, color:'#db8787', bg:'#b43535' },
-        car:     { label:'🚗', pts:25, w:16, color:'#FFF176', bg:'#FFD600' },
-        heart:   { label:'💕', pts:30, w:12, color:'#FF80AB', bg:'#eea1c7' },
-        sunglasses: { label:'🕶️', pts:42, w:7,  color:'#A78BFA', bg:'#6D28D9', special:true },
-        clock:      { label:'⏰', pts:20, w:10, color:'#6EE7B7', bg:'#059669', slow:true   },
-        skull:      { label:'💀', pts:0,  w:0,  color:'#888888', bg:'#333333', hazard:true },
+        balloon:    { label:'🎈', pts:10, w:40, color:'#ff6060', bg:'#cc2222', img:'bl-red.png' },
+        pizza:      { label:'🍕', pts:15, w:20, color:'#ffe44d', bg:'#ccaa00', img:'bl-yellow.png' },
+        car:        { label:'🚗', pts:25, w:16, color:'#c084fc', bg:'#7c3aed', img:'bl-purple.png' },
+        heart:      { label:'💕', pts:30, w:12, color:'#ff80ab', bg:'#cc3370', img:'bl-pink.png' },
+        sunglasses: { label:'🕶️', pts:42, w:7,  color:'#60a5fa', bg:'#1d6ed8', special:true, img:'bl-blue.png' },
+        clock:      { label:'⏰', pts:20, w:10, color:'#6EE7B7', bg:'#059669', slow:true,    img:'bl-green.png' },
+        skull:      { label:'💀', pts:0,  w:0,  color:'#555555', bg:'#111111', hazard:true,  img:'bl-black.png' },
     },
 
     // ── ステージ設定 ────────────────────────────────────────
     stages: [
-        { target:900,  interval:75, speed:1.8, bombW:8,  clockW:4,  bg1:'#a8d8f0', bg2:'#4aa8d8' },
-        { target:2000, interval:55, speed:2.5, bombW:16, clockW:6,  bg1:'#1a3a6e', bg2:'#15347c' },
-        { target:3800, interval:38, speed:3.2, bombW:24, bg1:'#0a0520', bg2:'#1a0535' },
-        { target:6000, interval:26, speed:4.0, bombW:32, bg1:'#000008', bg2:'#050018' },
+        { target:900,  interval:75, speed:2.1, bombW:8,  clockW:4,  bg1:'#a8d8f0', bg2:'#4aa8d8' },
+        { target:2000, interval:55, speed:2.9, bombW:16, clockW:6,  bg1:'#1a3a6e', bg2:'#15347c' },
+        { target:3800, interval:38, speed:3.7, bombW:24, bg1:'#0a0520', bg2:'#1a0535' },
+        { target:6000, interval:26, speed:4.6, bombW:32, bg1:'#000008', bg2:'#050018' },
     ],
 };

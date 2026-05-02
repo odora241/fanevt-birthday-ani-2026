@@ -7,7 +7,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon-180.png">
     <link rel="stylesheet" href="./style.css">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MP2BEN13ZP"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-MP2BEN13ZP');
+    </script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -87,6 +97,10 @@ const bouncerImgs = bouncerSrcs.map(s => loadImg(s));
 let titleImg        = CONFIG.assets.titleImgSrc        ? loadImg(CONFIG.assets.titleImgSrc)        : null;
 let titleImgCleared = CONFIG.assets.titleImgClearedSrc ? loadImg(CONFIG.assets.titleImgClearedSrc) : null;
 let reticleImg      = CONFIG.assets.reticleSrc         ? loadImg(CONFIG.assets.reticleSrc)         : null;
+const itemImgs = {};
+Object.entries(CONFIG.items).forEach(([k, d]) => {
+    if (d.img) itemImgs[k] = loadImg(`./assets/items/${d.img}`);
+});
 
 const CLEARED_KEY = 'sky-burst-42-cleared';
 let gameCleared = sessionStorage.getItem(CLEARED_KEY) === '1';
@@ -338,20 +352,9 @@ function puffyStarPath(cx, cy, outerR, innerR, n) {
 }
 function drawBalloon(it) {
     ctx.save();
-    if (it.def.slow) {
-        const bg = ctx.createRadialGradient(it.x - R*0.28, it.y - R*0.28, 2, it.x, it.y, R);
-        bg.addColorStop(0, it.def.color + 'EE');
-        bg.addColorStop(1, it.def.bg    + 'CC');
-        ctx.fillStyle = bg;
-        ctx.shadowColor = it.def.color; ctx.shadowBlur = 16;
-        puffyStarPath(it.x, it.y, R, R*0.52, 5);
-        ctx.fill(); ctx.shadowBlur = 0;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = `${R*0.95}px serif`;
-        ctx.fillText(it.def.label, it.x, it.y + 2);
-        ctx.textBaseline = 'alphabetic'; ctx.restore(); return;
-    }
-    if (!it.def.hazard) {
+
+    // string for non-hazard, non-slow items
+    if (!it.def.hazard && !it.def.slow) {
         ctx.beginPath();
         ctx.strokeStyle = 'rgba(255,255,255,0.22)';
         ctx.lineWidth = 1.5;
@@ -359,21 +362,48 @@ function drawBalloon(it) {
         ctx.lineTo(it.x, it.y + R + 32);
         ctx.stroke();
     }
-    const bg = ctx.createRadialGradient(it.x - R*0.28, it.y - R*0.28, 2, it.x, it.y, R);
-    bg.addColorStop(0, it.def.color + 'EE');
-    bg.addColorStop(1, it.def.bg    + 'CC');
-    ctx.beginPath();
-    ctx.arc(it.x, it.y, R, 0, Math.PI*2);
-    ctx.fillStyle = bg;
-    ctx.shadowColor = it.def.color; ctx.shadowBlur = 14;
-    ctx.fill(); ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.arc(it.x - R*0.28, it.y - R*0.28, R*0.18, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.38)'; ctx.fill();
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `${R*1.05}px serif`;
-    ctx.fillText(it.def.label, it.x, it.y + 2);
-    ctx.textBaseline = 'alphabetic';
+
+    const img = itemImgs[it.type];
+    const imgReady = img && img.complete && img.naturalWidth > 0;
+
+    if (imgReady) {
+        ctx.shadowColor = it.def.color;
+        ctx.shadowBlur = it.def.special ? 22 : it.def.slow ? 18 : 14;
+        ctx.drawImage(img, it.x - R, it.y - R, R * 2, R * 2);
+        ctx.shadowBlur = 0;
+    } else {
+        // fallback: emoji rendering
+        if (it.def.slow) {
+            const bg = ctx.createRadialGradient(it.x - R*0.28, it.y - R*0.28, 2, it.x, it.y, R);
+            bg.addColorStop(0, it.def.color + 'EE');
+            bg.addColorStop(1, it.def.bg    + 'CC');
+            ctx.fillStyle = bg;
+            ctx.shadowColor = it.def.color; ctx.shadowBlur = 16;
+            puffyStarPath(it.x, it.y, R, R*0.52, 5);
+            ctx.fill(); ctx.shadowBlur = 0;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = `${R*0.95}px serif`;
+            ctx.fillText(it.def.label, it.x, it.y + 2);
+            ctx.textBaseline = 'alphabetic';
+        } else {
+            const bg = ctx.createRadialGradient(it.x - R*0.28, it.y - R*0.28, 2, it.x, it.y, R);
+            bg.addColorStop(0, it.def.color + 'EE');
+            bg.addColorStop(1, it.def.bg    + 'CC');
+            ctx.beginPath();
+            ctx.arc(it.x, it.y, R, 0, Math.PI*2);
+            ctx.fillStyle = bg;
+            ctx.shadowColor = it.def.color; ctx.shadowBlur = 14;
+            ctx.fill(); ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(it.x - R*0.28, it.y - R*0.28, R*0.18, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(255,255,255,0.38)'; ctx.fill();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = `${R*1.05}px serif`;
+            ctx.fillText(it.def.label, it.x, it.y + 2);
+            ctx.textBaseline = 'alphabetic';
+        }
+    }
+
     ctx.restore();
 }
 
@@ -383,21 +413,29 @@ const PAUSE_BTN = { size: 40 };
 function drawHUD() {
     const padX = 16;
 
+    // Proportional Y positions
+    const hMid  = Math.round(H * 0.024);  // top-bar center (≈22)
+    const hLine = Math.round(H * 0.062);  // top hairline   (≈56)
+    const hPrg  = Math.round(H * 0.089);  // progress bar   (≈80)
+    const hScr  = Math.round(H * 0.107);  // score baseline (≈96)
+    const hLbl  = Math.round(H * 0.122);  // SCORE label    (≈110)
+    const hSlow = Math.round(H * 0.147);  // slow indicator (≈132)
+
     // top hairline
-    hairline(padX, 56, W - padX, 56, UI.line);
+    hairline(padX, hLine, W - padX, hLine, UI.line);
 
     // dot + STAGE label (left)
     ctx.fillStyle = UI.accent;
-    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(padX + 4, hMid, 4, 0, Math.PI*2); ctx.fill();
     ctx.save();
     ctx.shadowColor = UI.accent; ctx.shadowBlur = 14;
-    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(padX + 4, hMid, 4, 0, Math.PI*2); ctx.fill();
     ctx.restore();
 
     ctx.font = `500 11px ${UI.fontMono}`;
     ctx.fillStyle = UI.ink2;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(`STAGE ${G.si+1} / ${STAGES.length}`, padX + 16, 22);
+    ctx.fillText(`STAGE ${G.si+1} / ${STAGES.length}`, padX + 16, hMid);
 
     // lives (right) — ticks first, then LIFE label to the left of them
     const livesX = W - padX;
@@ -407,29 +445,29 @@ function drawHUD() {
         const cx = tickStart + i * (tickW + tickGap);
         if (i < G.lives) {
             ctx.fillStyle = UI.accent;
-            ctx.fillRect(cx, 18, tickW, 8);
+            ctx.fillRect(cx, hMid - 4, tickW, 8);
         } else {
             ctx.strokeStyle = UI.ink3; ctx.lineWidth = 1;
-            ctx.strokeRect(cx + 0.5, 18.5, tickW - 1, 7);
+            ctx.strokeRect(cx + 0.5, hMid - 3.5, tickW - 1, 7);
         }
     }
     ctx.font = `500 11px ${UI.fontMono}`;
     ctx.fillStyle = UI.ink2;
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    ctx.fillText('LIFE', tickStart - 8, 22);
+    ctx.fillText('LIFE', tickStart - 8, hMid);
 
     // score - large, left
     ctx.font = `600 32px ${UI.fontDisp}`;
     ctx.fillStyle = UI.ink0;
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText(`${G.score}`.padStart(4, '0'), padX, 96);
+    ctx.fillText(`${G.score}`.padStart(4, '0'), padX, hScr);
 
     ctx.font = `500 10px ${UI.fontMono}`;
     ctx.fillStyle = UI.ink2;
-    ctx.fillText('SCORE', padX, 110);
+    ctx.fillText('SCORE', padX, hLbl);
 
     // progress bar (right block)
-    const bx = padX + 110, by = 80, bw = W - padX*2 - 110, bh = 4;
+    const bx = padX + 110, by = hPrg, bw = W - padX*2 - 110, bh = 4;
     ctx.fillStyle = 'rgba(255,255,255,0.06)';
     ctx.fillRect(bx, by, bw, bh);
     const prog = Math.min(G.stagePts / STAGES[G.si].target, 1);
@@ -497,7 +535,7 @@ function drawHUD() {
         ctx.font = `500 10px ${UI.fontMono}`;
         ctx.fillStyle = '#6EE7B7';
         ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-        ctx.fillText(`SLOW  ${(G.slowTimer/60).toFixed(1)}s`, W - padX, 132);
+        ctx.fillText(`SLOW  ${(G.slowTimer/60).toFixed(1)}s`, W - padX, hSlow);
     }
 
     // pause btn (top-right corner) — drawn as a small 2-bar icon inside a square
@@ -623,55 +661,67 @@ function drawTitle() {
 
     drawTitleImg();
 
-    const padX = 20;
+    const padX = 42;
+
+    // Proportional Y positions — prevents overlap when canvas height changes
+    const hTop   = Math.round(H * 0.024);  // top-bar center   (≈22 at H=900)
+    const hLine1 = Math.round(H * 0.062);  // top hairline      (≈56)
+    const hEye   = Math.round(H * 0.107);  // eyebrow row       (≈96)
+    const wordSz = Math.round(Math.min(72, H * 0.082)); // scales down on small screens
+    const hSky   = Math.round(H * 0.187);  // "Sky" baseline    (≈168)
+    const hBurst = Math.round(H * 0.258);  // "Burst." baseline (≈232)
+    const hSub   = Math.round(H * 0.291);  // subtitle row      (≈262)
+    const hLine2 = Math.round(H * 0.309);  // bottom hairline   (≈278)
 
     // top hairline + meta
-    hairline(padX, 56, W - padX, 56, UI.line);
+    hairline(padX, hLine1, W - padX, hLine1, UI.line);
     ctx.fillStyle = UI.accent;
-    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(padX + 4, hTop, 4, 0, Math.PI*2); ctx.fill();
     ctx.save();
     ctx.shadowColor = UI.accent; ctx.shadowBlur = 14;
-    ctx.beginPath(); ctx.arc(padX + 4, 22, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(padX + 4, hTop, 4, 0, Math.PI*2); ctx.fill();
     ctx.restore();
     ctx.font = `500 11px ${UI.fontMono}`;
     ctx.fillStyle = UI.ink2;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('SKY BURST', padX + 14, 22);
+    ctx.fillText('SKY BURST', padX + 14, hTop);
     ctx.textAlign = 'right';
-    ctx.fillText(gameCleared ? 'CLEARED · v1.0' : 'v1.0', W - padX, 22);
+    ctx.fillText(gameCleared ? 'CLEARED · v1.0' : 'v1.0', W - padX, hTop);
 
     // Title block — eyebrow with pulsing dot
     const pulse = 0.5 + Math.sin(G.frame * 0.08) * 0.3;
     ctx.save();
     ctx.globalAlpha = pulse;
     ctx.fillStyle = UI.accent2;
-    ctx.beginPath(); ctx.arc(padX + 4, 96, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(padX + 4, hEye, 3, 0, Math.PI*2); ctx.fill();
     ctx.restore();
     ctx.font = `600 10px ${UI.fontMono}`;
     ctx.fillStyle = UI.accent2;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('LIVE · A FAN GAME FOR 42', padX + 14, 96);
+    ctx.fillText('LIVE · A FAN GAME FOR 42', padX + 14, hEye);
 
     // Big wordmark with subtle parallax
     const drift = Math.sin(G.frame * 0.02) * 2;
-    ctx.font = `700 72px ${UI.fontDisp}`;
+    ctx.font = `700 ${wordSz}px ${UI.fontDisp}`;
     ctx.fillStyle = UI.ink0;
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText('Sky', padX, 168 + drift);
+    ctx.fillText('Sky', padX, hSky + drift);
 
     ctx.save();
-    ctx.font = `500 italic 72px ${UI.fontDisp}`;
+    ctx.font = `500 italic ${wordSz}px ${UI.fontDisp}`;
     ctx.shadowColor = hexA(UI.accent, 0.6);
     ctx.shadowBlur = 20;
     ctx.fillStyle = UI.accent;
-    ctx.fillText('Burst.', padX, 232 + drift);
+    ctx.fillText('Burst.', padX, hBurst + drift);
     ctx.restore();
 
     // Subtitle row with version tag
     ctx.font = `500 11px ${UI.fontMono}`;
     ctx.fillStyle = UI.ink2;
-    ctx.fillText('FPS · BALLOON BUSTER', padX, 262);
-    const tagW = 44, tagH = 20, tagX = W - padX - tagW, tagY = 248;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.fillText('FPS · BALLOON BUSTER', padX, hSub);
+    const tagW = 44, tagH = 20, tagX = W - padX - tagW, tagY = hSub - tagH;
     ctx.strokeStyle = UI.line2; ctx.lineWidth = 1;
     ctx.strokeRect(tagX + 0.5, tagY + 0.5, tagW - 1, tagH - 1);
     ctx.font = `600 10px ${UI.fontMono}`;
@@ -680,20 +730,20 @@ function drawTitle() {
     ctx.fillText(':42', tagX + tagW/2, tagY + tagH/2 + 1);
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    hairline(padX, 278, W - padX, 278);
+    hairline(padX, hLine2, W - padX, hLine2);
 
     // Rules block — with dim plate behind for legibility over mascot
     const rules = CONFIG.title.instructions;
     const lineH = 30;
-    const rTop = H * 0.40;
+    const rTop = Math.max(hLine2 + 24, Math.round(H * 0.38));
     const rH = lineH * rules.length + 36;
 
     ctx.save();
     const grad = ctx.createLinearGradient(0, rTop - 24, 0, rTop + rH + 8);
-    grad.addColorStop(0, hexA(UI.bg0, 0));
-    grad.addColorStop(0.18, hexA(UI.bg0, 0.78));
-    grad.addColorStop(0.82, hexA(UI.bg0, 0.78));
-    grad.addColorStop(1, hexA(UI.bg0, 0));
+    grad.addColorStop(0, hexA('#0e0528', 0));
+    grad.addColorStop(0.18, hexA('#0e0528', 0.82));
+    grad.addColorStop(0.82, hexA('#0e0528', 0.82));
+    grad.addColorStop(1, hexA('#0e0528', 0));
     ctx.fillStyle = grad;
     ctx.fillRect(0, rTop - 24, W, rH + 32);
     ctx.restore();
@@ -717,8 +767,8 @@ function drawTitle() {
     });
 
     // START button — hard-edged accent rect
-    const bw = W - padX*2, bh = 56;
-    const bx = padX, by = H - 110;
+    const bw = W - padX*2, bh = 52;
+    const bx = padX, by = H - 140;
     G._titleBtnY = by + bh/2;
     G._titleBtnW = bw;
     G._titleBtnH = bh;
@@ -730,27 +780,24 @@ function drawTitle() {
     rrect(bx, by, bw, bh, 4); ctx.fill();
     ctx.restore();
 
-    ctx.font = `600 18px ${UI.fontDisp}`;
+    ctx.font = `900 22px ${UI.fontDisp}`;
     ctx.fillStyle = UI.bg0;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    let cx = bx + 24;
+    let cx = bx + 28;
     for (const ch of 'START') {
         ctx.fillText(ch, cx, by + bh/2);
-        cx += ctx.measureText(ch).width + 4;
+        cx += ctx.measureText(ch).width + 3;
     }
-    // arrow
-    const ax = bx + bw - 28, ay = by + bh/2;
-    ctx.strokeStyle = UI.bg0; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(ax - 22, ay); ctx.lineTo(ax + 6, ay); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(ax - 4, ay - 8); ctx.lineTo(ax + 6, ay); ctx.lineTo(ax - 4, ay + 8);
-    ctx.stroke();
+    // chevron
+    ctx.font = `700 22px ${UI.fontDisp}`;
+    ctx.textAlign = 'right';
+    ctx.fillText('>', bx + bw - 26, by + bh/2);
 
     // sub-label below
     ctx.font = `500 10px ${UI.fontMono}`;
     ctx.fillStyle = UI.ink2;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('TAP / CLICK / SPACE', W/2, by + bh + 18);
+    ctx.fillText('TAP / CLICK / SPACE', W/2, by + bh + 16);
 
     // bottom meta
     hairline(padX, H - 38, W - padX, H - 38);
@@ -892,7 +939,7 @@ function drawPaused() {
 function drawGameOver() {
     drawGame();
     drawOverlay(0.85);
-    const padX = 20;
+    const padX = 42;
 
     ctx.font = `500 11px ${UI.fontMono}`;
     ctx.fillStyle = UI.accent2;
@@ -919,7 +966,7 @@ function drawGameOver() {
     // message
     ctx.font = `400 12px ${UI.fontJa}`;
     ctx.fillStyle = UI.ink2;
-    ctx.fillText(CONFIG.gameOver.message, padX, H*0.55 + 70);
+    ctx.fillText(CONFIG.gameOver.message, padX, H*0.55 + 82);
 
     // retry btn
     const bw = W - padX*2, bh = 52;
@@ -1219,6 +1266,7 @@ function updateCursor(e) {
 }
 canvas.addEventListener('mousemove', updateCursor);
 canvas.addEventListener('touchmove', updateCursor, { passive: true });
+canvas.addEventListener('touchstart', updateCursor, { passive: true });
 canvas.addEventListener('mouseleave', () => { cursorX = -999; cursorY = -999; });
 
 function replayState() { initState(); G.phase = 'title'; G.frame = 0; }
