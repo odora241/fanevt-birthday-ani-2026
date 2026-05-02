@@ -18,8 +18,8 @@ const CONFIG = {
 
     // ── ローディング画面 ────────────────────────────────────
     loading: {
-        title1: 'Sky',
-        title2: 'Burst.',
+        title1: '2BRO',
+        title2: 'Fangame',
         text:   'Loading',
     },
 
@@ -27,9 +27,9 @@ const CONFIG = {
     title: {
         instructions: [
             '下から飛んでくる風船を撃ち抜こう',
-            '連続Hitでコンボボーナス',
+            '連続Hitでコンボボーナス！',
             '1123💀は撃つな ー ライフ−1',
-            'サングラスは高得点ターゲット🕶',
+            '青い風船は高得点ターゲット🕶',
         ],
     },
 
@@ -43,12 +43,14 @@ const CONFIG = {
     // ── ゲームオーバー画面 ──────────────────────────────────
     gameOver: {
         message: '本当はもっといけるよな？',
+        messageStage3: 'ここまでで満足かい？',
     },
 
     // ── クリア（エンディング）画面 ──────────────────────────
     ending: {
-        message: '兄者はPURFECTな42歳をむかえた！',
-        chickenMessage: '遊んでくれてありがとう！\n42歳もよろしくね！',
+        message: '兄者はFABULOUSな42歳をむかえた！',
+        chickenMessage: 'Thx 4 playing!\n兄者さんに幸あれ～！(強火)',
+        chickenAuthor: '— from @Niro_pk',
     },
 
     // ── アイテム定義 ────────────────────────────────────────
@@ -59,13 +61,13 @@ const CONFIG = {
         car:        { label:'🚗', pts:25, w:16, color:'#c084fc', bg:'#7c3aed', img:'bl-purple.png' },
         heart:      { label:'💕', pts:30, w:12, color:'#ff80ab', bg:'#cc3370', img:'bl-pink.png' },
         sunglasses: { label:'🕶️', pts:42, w:7,  color:'#60a5fa', bg:'#1d6ed8', special:true, img:'bl-blue.png' },
-        clock:      { label:'⏰', pts:20, w:10, color:'#6EE7B7', bg:'#059669', slow:true,    img:'bl-green.png' },
+        clock:      { label:'⏰', pts:20, w:6, color:'#6EE7B7', bg:'#059669', slow:true,    img:'bl-green.png' },
         skull:      { label:'💀', pts:0,  w:0,  color:'#555555', bg:'#111111', hazard:true,  img:'bl-black.png' },
     },
 
     // ── ステージ設定 ────────────────────────────────────────
     stages: [
-        { target:900,  interval:75, speed:3.15, bombW:8,  clockW:4,  bg1:'#a8d8f0', bg2:'#4aa8d8' },
+        { target:900,  interval:75, speed:3.15, bombW:8,  clockW:4,  bg1:'#85bddd', bg2:'#2865af' },
         { target:2000, interval:55, speed:4.35, bombW:16, clockW:6,  bg1:'#1a3a6e', bg2:'#15347c' },
         { target:3800, interval:38, speed:5.55, bombW:24, bg1:'#0a0520', bg2:'#1a0535' },
         { target:6000, interval:26, speed:6.9,  bombW:32, bg1:'#000008', bg2:'#050018' },
