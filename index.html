@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <title>SKY BURST · 42</title>
+    <title>SKY BURST：42</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -24,15 +24,11 @@
 <canvas id="c"></canvas>
 <script src="./config.js"></script>
 <script>
-// ==========================================================
-//  SKY BURST · 42 — Redesigned
-//  Dark-neon UI shell. Game logic preserved; visuals reskinned.
-// ==========================================================
 
 const STAGES       = CONFIG.stages;
 const STAGE_UP_MSG = CONFIG.stageUpMessages;
 
-// ── Design tokens (UI shell — game items keep their original colors) ─────
+// ── Design tokens (UI shell) ─────
 const UI = {
     bg0:      '#050714',
     bg1:      '#0a0e1f',
@@ -58,8 +54,9 @@ Object.entries(CONFIG.items).forEach(([k, d]) => {
     };
 });
 
-const R        = 36;
-const COMBO_MS = 1500;
+const R         = 36;
+const COMBO_MS  = 1500;
+const MAX_COMBO = CONFIG.maxCombo;
 
 // timing
 const LOADING_FRAMES        = 100;
@@ -248,11 +245,11 @@ function onPop(it) {
         floatText(it.x, it.y - 20, 'MISS −1', UI.accent2);
         if (G.lives <= 0) setTimeout(() => G.phase = 'gameOver', 400);
     } else {
-        G.combo   = (now - G.lastPop < COMBO_MS) ? Math.min(G.combo + 1, 8) : 1;
+        G.combo   = (now - G.lastPop < COMBO_MS) ? Math.min(G.combo + 1, MAX_COMBO) : 1;
         G.lastPop = now;
         const pts = it.def.pts * G.combo;
         G.score    += pts;
-        G.stagePts += pts;
+        G.stagePts += it.def.pts;
         burst(it.x, it.y, it.def.color, it.def.special ? 22 : 12);
         if (it.def.slow) {
             if (G.slowTimer === 0) G.items.forEach(t => { if (!t.popped) t.vy *= 0.55; });
@@ -560,7 +557,7 @@ function drawHUD() {
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
         ctx.fillRect(cx, cy, cw, 2);
         ctx.fillStyle = UI.accent;
-        ctx.fillRect(cx, cy, cw * (G.combo / 8), 2);
+        ctx.fillRect(cx, cy, cw * (G.combo / MAX_COMBO), 2);
     }
 
     // slow indicator
