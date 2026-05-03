@@ -1,4 +1,3 @@
-# Block hidden / dev files (force redirect even if file exists)
 /.gitignore        /  302
 /.gitattributes    /  302
 /.git/*            /  302
@@ -13,6 +12,3 @@
 /.DS_Store         /  302
 /.vscode/*         /  302
 /.idea/*           /  302
-
-# Catch-all: any path that does not match a real static asset → redirect to top
-/*                 /  302
