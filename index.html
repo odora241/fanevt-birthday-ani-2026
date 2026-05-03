@@ -249,7 +249,7 @@ function onPop(it) {
         G.lastPop = now;
         const pts = it.def.pts * G.combo;
         G.score    += pts;
-        G.stagePts += it.def.pts;
+        G.stagePts++;
         burst(it.x, it.y, it.def.color, it.def.special ? 22 : 12);
         if (it.def.slow) {
             if (G.slowTimer === 0) G.items.forEach(t => { if (!t.popped) t.vy *= 0.55; });

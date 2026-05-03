@@ -4,7 +4,7 @@
 
 const CONFIG = {
 
-    version: '1.33',
+    version: '1.40',
 
     // ── 画像・動画ファイル ──────────────────────────────────
     assets: {
@@ -81,9 +81,9 @@ const CONFIG = {
 
     // ── ステージ設定 ────────────────────────────────────────
     stages: [
-        { target:900,  interval:75, speed:3.15, bombW:8,  clockW:4,  bg1:'#85bddd', bg2:'#2865af' },
-        { target:2000, interval:55, speed:4.35, bombW:16, clockW:6,  bg1:'#1a3a6e', bg2:'#15347c' },
-        { target:3800, interval:38, speed:5.55, bombW:24, bg1:'#0a0520', bg2:'#1a0535' },
-        { target:6000, interval:26, speed:6.9,  bombW:32, bg1:'#000008', bg2:'#050018' },
+        { target: 13, interval:75, speed:3.15, bombW:8,  clockW:4,  bg1:'#85bddd', bg2:'#2865af' },
+        { target: 20, interval:55, speed:4.35, bombW:16, clockW:6,  bg1:'#1a3a6e', bg2:'#15347c' },
+        { target: 28, interval:38, speed:5.55, bombW:24, bg1:'#0a0520', bg2:'#1a0535' },
+        { target: 35, interval:26, speed:6.9,  bombW:32, bg1:'#000008', bg2:'#050018' },
     ],
 };
