@@ -35,3 +35,35 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Claude Code work artifacts #
+##############################
+.claude/
+
+# Environment / secrets #
+#########################
+.env
+.env.*
+!.env.example
+*.local
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Node / build #
+################
+node_modules/
+dist/
+build/
+
+# Cloudflare Wrangler #
+#######################
+.wrangler/
+.dev.vars
+
+# IDE #
+#######
+.vscode/
+.idea/
+*.swp
